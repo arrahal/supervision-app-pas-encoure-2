@@ -1,0 +1,8 @@
+{
+  "name": "Remix AAAA",
+  "description": "Imported from GitHub: arrahal/AAAA",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
