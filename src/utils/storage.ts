@@ -19,6 +19,7 @@ export function loadData(): AppData {
     const parsed = JSON.parse(raw) as AppData;
     if (!parsed.monthData) parsed.monthData = {};
     if (!parsed.supervisor) parsed.supervisor = { ...INITIAL_SUPERVISOR };
+    if (!parsed.supervisor.password) parsed.supervisor.password = '123456';
     
     // Deduplicate animateurs and ecoles if duplicate entries exist in storage
     const seenAnimKeys = new Set<string>();

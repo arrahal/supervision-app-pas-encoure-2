@@ -41,6 +41,7 @@ export const INITIAL_SUPERVISOR: SupervisorInfo = {
   project: 'برنامج الدعم التربوي والتأطير',
   region: 'جهة مراكش آسفي',
   province: 'المديرية الإقليمية',
+  password: '123456',
 };
 
 export const INITIAL_DATA: AppData = {
@@ -60,6 +61,7 @@ export const DEMO_SAMPLE_DATA: AppData = {
     project: 'مشروع الدعم والارتقاء بالتأطير التربوي',
     region: 'جهة مراكش آسفي',
     province: 'مديرية مراكش',
+    password: '123456',
   },
   currentMonth: new Date().getMonth() + 1,
   animateurs: [

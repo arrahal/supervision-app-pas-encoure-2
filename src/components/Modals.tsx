@@ -9,7 +9,7 @@ import {
   DEFAULT_PROVINCE,
   DEFAULT_COMMUNE,
 } from '../data/moroccoLocations';
-import { X, Star, Save, Plus, Trash2, Users, School, Layers, Check, MapPin, ExternalLink } from 'lucide-react';
+import { X, Star, Save, Plus, Trash2, Users, School, Layers, Check, MapPin, ExternalLink, Lock, Eye, EyeOff } from 'lucide-react';
 import { saveMonthSnapshot, saveCloudCfg, saveGistCfg, getCloudCfg, getGistCfg } from '../utils/storage';
 
 interface ModalProps {
@@ -1791,7 +1791,7 @@ export const SupervisorModal: React.FC<{
         province: province.trim() || 'المديرية الإقليمية',
       },
     }));
-    alert('✅ تم حفظ معلومات المشرف التربوي والمشروع بنجاح!');
+    alert('✅ تم حفظ معلومات وحساب المشرف التربوي بنجاح!');
     onClose();
   };
 

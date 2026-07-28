@@ -3,6 +3,7 @@ export interface SupervisorInfo {
   project: string;
   region: string;
   province: string;
+  password?: string;
 }
 
 export interface Animateur {
