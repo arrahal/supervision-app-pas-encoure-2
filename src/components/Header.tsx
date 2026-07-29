@@ -100,35 +100,35 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       {/* Stats Ticker */}
-      <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-0.5 scrollbar-none text-center touch-pan-x">
-        <div className="bg-white/15 border border-white/20 backdrop-blur-md rounded-xl px-2.5 py-1 min-w-[62px] sm:min-w-[70px] flex-1 flex flex-col items-center">
-          <span className="text-sm sm:text-base font-extrabold text-white leading-tight">{db.animateurs.length}</span>
-          <span className="text-[9px] sm:text-[10px] text-blue-100/80 font-medium whitespace-nowrap">{t.teacher}</span>
+      <div className="grid grid-cols-6 gap-1 text-center w-full">
+        <div className="bg-white/15 border border-white/20 backdrop-blur-md rounded-xl py-1 px-0.5 flex flex-col items-center justify-center">
+          <span className="text-xs sm:text-base font-extrabold text-white leading-tight">{db.animateurs.length}</span>
+          <span className="text-[8.5px] sm:text-[10px] text-blue-100/90 font-medium truncate max-w-full px-0.5">{t.teacher}</span>
         </div>
 
-        <div className="bg-white/15 border border-white/20 backdrop-blur-md rounded-xl px-2.5 py-1 min-w-[62px] sm:min-w-[70px] flex-1 flex flex-col items-center">
-          <span className="text-sm sm:text-base font-extrabold text-white leading-tight">{db.ecoles.length}</span>
-          <span className="text-[9px] sm:text-[10px] text-blue-100/80 font-medium whitespace-nowrap">{t.school}</span>
+        <div className="bg-white/15 border border-white/20 backdrop-blur-md rounded-xl py-1 px-0.5 flex flex-col items-center justify-center">
+          <span className="text-xs sm:text-base font-extrabold text-white leading-tight">{db.ecoles.length}</span>
+          <span className="text-[8.5px] sm:text-[10px] text-blue-100/90 font-medium truncate max-w-full px-0.5">{t.school}</span>
         </div>
 
-        <div className="bg-white/15 border border-white/20 backdrop-blur-md rounded-xl px-2.5 py-1 min-w-[62px] sm:min-w-[70px] flex-1 flex flex-col items-center">
-          <span className="text-sm sm:text-base font-extrabold text-white leading-tight">{db.groupes.length}</span>
-          <span className="text-[9px] sm:text-[10px] text-blue-100/80 font-medium whitespace-nowrap">{t.group}</span>
+        <div className="bg-white/15 border border-white/20 backdrop-blur-md rounded-xl py-1 px-0.5 flex flex-col items-center justify-center">
+          <span className="text-xs sm:text-base font-extrabold text-white leading-tight">{db.groupes.length}</span>
+          <span className="text-[8.5px] sm:text-[10px] text-blue-100/90 font-medium truncate max-w-full px-0.5">{t.group}</span>
         </div>
 
-        <div className="bg-white/15 border border-white/20 backdrop-blur-md rounded-xl px-2.5 py-1 min-w-[62px] sm:min-w-[70px] flex-1 flex flex-col items-center">
-          <span className="text-sm sm:text-base font-extrabold text-white leading-tight">{totalEff}</span>
-          <span className="text-[9px] sm:text-[10px] text-blue-100/80 font-medium whitespace-nowrap">{t.student}</span>
+        <div className="bg-white/15 border border-white/20 backdrop-blur-md rounded-xl py-1 px-0.5 flex flex-col items-center justify-center">
+          <span className="text-xs sm:text-base font-extrabold text-white leading-tight">{totalEff}</span>
+          <span className="text-[8.5px] sm:text-[10px] text-blue-100/90 font-medium truncate max-w-full px-0.5">{t.student}</span>
         </div>
 
-        <div className="bg-emerald-500/25 border border-emerald-300/40 backdrop-blur-md rounded-xl px-2.5 py-1 min-w-[62px] sm:min-w-[70px] flex-1 flex flex-col items-center">
-          <span className="text-sm sm:text-base font-extrabold text-emerald-200 leading-tight">{totalVisits}</span>
-          <span className="text-[9px] sm:text-[10px] text-emerald-100 font-medium whitespace-nowrap">{t.visit}</span>
+        <div className="bg-emerald-500/25 border border-emerald-300/40 backdrop-blur-md rounded-xl py-1 px-0.5 flex flex-col items-center justify-center">
+          <span className="text-xs sm:text-base font-extrabold text-emerald-200 leading-tight">{totalVisits}</span>
+          <span className="text-[8.5px] sm:text-[10px] text-emerald-100 font-medium truncate max-w-full px-0.5">{t.visit}</span>
         </div>
 
-        <div className="bg-rose-500/25 border border-rose-300/40 backdrop-blur-md rounded-xl px-2.5 py-1 min-w-[62px] sm:min-w-[70px] flex-1 flex flex-col items-center">
-          <span className="text-sm sm:text-base font-extrabold text-rose-200 leading-tight">{totalAbs}</span>
-          <span className="text-[9px] sm:text-[10px] text-rose-100 font-medium whitespace-nowrap">{t.absence}</span>
+        <div className="bg-rose-500/25 border border-rose-300/40 backdrop-blur-md rounded-xl py-1 px-0.5 flex flex-col items-center justify-center">
+          <span className="text-xs sm:text-base font-extrabold text-rose-200 leading-tight">{totalAbs}</span>
+          <span className="text-[8.5px] sm:text-[10px] text-rose-100 font-medium truncate max-w-full px-0.5">{t.absence}</span>
         </div>
       </div>
     </header>

@@ -220,19 +220,19 @@ export const LoginModal: React.FC<LoginModalProps> = ({ db, lang, onLoginSuccess
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/80 backdrop-blur-md animate-fadeIn">
-      <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-md w-full p-5 sm:p-8 space-y-4 sm:space-y-5 max-h-[88dvh] sm:max-h-[90dvh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-slate-900/80 backdrop-blur-md animate-fadeIn">
+      <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-sm sm:max-w-md w-full p-4 sm:p-6 space-y-3 sm:space-y-4 max-h-[92dvh] overflow-y-auto">
         {/* Header Branding */}
-        <div className="text-center space-y-2">
-          <div className="w-16 h-16 mx-auto bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200/80 rounded-2xl p-2 shadow-inner flex items-center justify-center">
+        <div className="text-center space-y-1.5">
+          <div className="w-12 h-12 sm:w-14 sm:h-14 mx-auto bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200/80 rounded-2xl p-1.5 shadow-inner flex items-center justify-center">
             <img src="/zakoura-logo.svg" alt="Fondation Zakoura" className="w-full h-full object-contain" />
           </div>
 
           <div>
-            <h2 className="text-lg font-extrabold text-slate-800 tracking-tight">
+            <h2 className="text-base sm:text-lg font-extrabold text-slate-800 tracking-tight">
               {lang === 'fr' ? 'Espace Supervision Pédagogique' : 'بوابة حسابات المشرفين التربويين'}
             </h2>
-            <p className="text-[11px] text-slate-500 font-medium">
+            <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium">
               {lang === 'fr' ? 'مؤسسة زاكورة — Fondation Zakoura' : 'تأطير وتتبع الزيارات الميدانية — مؤسسة زاكورة'}
             </p>
           </div>

@@ -34,7 +34,7 @@ export const Navigation: React.FC<NavigationProps> = ({ currentTab, lang, onSele
 
   return (
     <nav className="bg-white border-t border-slate-200 shadow-2xl flex-shrink-0 relative z-30 pb-safe">
-      <div className="flex items-center overflow-x-auto scrollbar-none touch-pan-x w-full max-w-xl mx-auto px-2 py-2 gap-1.5 justify-start sm:justify-center">
+      <div className="flex items-center overflow-x-auto scrollbar-none touch-pan-x w-full max-w-xl mx-auto px-1 py-1.5 gap-0.5 justify-between">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = currentTab === tab.id;
@@ -42,14 +42,16 @@ export const Navigation: React.FC<NavigationProps> = ({ currentTab, lang, onSele
             <button
               key={tab.id}
               onClick={() => onSelectTab(tab.id)}
-              className={`flex-shrink-0 px-2.5 py-1.5 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all duration-200 cursor-pointer min-w-[62px] ${
+              className={`flex-1 min-w-[44px] sm:min-w-[54px] px-1 py-1 rounded-xl flex flex-col items-center justify-center gap-0.5 transition-all duration-200 cursor-pointer ${
                 isActive
-                  ? 'bg-blue-600 text-white shadow-md font-extrabold scale-102 ring-2 ring-blue-400/30'
+                  ? 'bg-blue-600 text-white shadow-md font-extrabold scale-102 ring-1 ring-blue-400/30'
                   : 'text-slate-600 hover:text-blue-600 hover:bg-slate-50 font-bold'
               }`}
             >
-              <Icon className={`w-4 h-4 ${isActive ? 'stroke-[2.5]' : 'stroke-2'}`} />
-              <span className="text-[10px] leading-tight text-center whitespace-nowrap">{tab.label}</span>
+              <Icon className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isActive ? 'stroke-[2.5]' : 'stroke-2'}`} />
+              <span className="text-[8.5px] sm:text-[10px] leading-tight text-center truncate max-w-full px-0.5">
+                {tab.label}
+              </span>
             </button>
           );
         })}
