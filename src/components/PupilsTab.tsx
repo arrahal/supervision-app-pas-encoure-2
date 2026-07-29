@@ -130,11 +130,27 @@ export const PupilsTab: React.FC<PupilsTabProps> = ({ db, lang = 'ar', onUpdateD
       notes: '',
     };
 
-    onUpdateDb((prev) => ({
-      ...prev,
-      inqitaat: [newInqitaa, ...(prev.inqitaat || [])],
-      nextId: { ...prev.nextId, inq: newId + 1 },
-    }));
+    onUpdateDb((prev) => {
+      // Reduce group pupil count (eff) when student drops out
+      const updatedGroupes = prev.groupes.map((g) => {
+        if (g.id === inqGroupeId) {
+          return {
+            ...g,
+            eff: Math.max(0, g.eff - 1),
+            filles: inqSexe === 'F' ? Math.max(0, g.filles - 1) : g.filles,
+            garcons: inqSexe === 'M' ? Math.max(0, g.garcons - 1) : g.garcons,
+          };
+        }
+        return g;
+      });
+
+      return {
+        ...prev,
+        groupes: updatedGroupes,
+        inqitaat: [newInqitaa, ...(prev.inqitaat || [])],
+        nextId: { ...prev.nextId, inq: newId + 1 },
+      };
+    });
 
     setInqNom('');
     setInqCode('E1');
@@ -145,34 +161,104 @@ export const PupilsTab: React.FC<PupilsTabProps> = ({ db, lang = 'ar', onUpdateD
   };
 
   const handleToggleIrjaa = (inqId: number) => {
-    onUpdateDb((prev) => ({
-      ...prev,
-      inqitaat: (prev.inqitaat || []).map((item) => {
-        if (item.id === inqId) {
-          const nextStatus = item.status === 'monqatia' ? 'irjaa' : 'monqatia';
+    onUpdateDb((prev) => {
+      const item = (prev.inqitaat || []).find((i) => i.id === inqId);
+      if (!item) return prev;
+
+      const isBecomingIrjaa = item.status === 'monqatia'; // Changing to 'irjaa'
+      const targetGroupeId = item.groupeId;
+
+      const updatedGroupes = prev.groupes.map((g) => {
+        if (g.id === targetGroupeId) {
+          if (isBecomingIrjaa) {
+            // Student reinstated -> increase pupil count (eff)
+            return {
+              ...g,
+              eff: g.eff + 1,
+              filles: item.sexe === 'F' ? g.filles + 1 : g.filles,
+              garcons: item.sexe === 'M' ? g.garcons + 1 : g.garcons,
+            };
+          } else {
+            // Changing back to monqatia -> decrease pupil count (eff)
+            return {
+              ...g,
+              eff: Math.max(0, g.eff - 1),
+              filles: item.sexe === 'F' ? Math.max(0, g.filles - 1) : g.filles,
+              garcons: item.sexe === 'M' ? Math.max(0, g.garcons - 1) : g.garcons,
+            };
+          }
+        }
+        return g;
+      });
+
+      const updatedInqitaat = (prev.inqitaat || []).map((i) => {
+        if (i.id === inqId) {
+          const nextStatus: 'monqatia' | 'irjaa' = isBecomingIrjaa ? 'irjaa' : 'monqatia';
           return {
-            ...item,
+            ...i,
             status: nextStatus,
             dateIrjaa: nextStatus === 'irjaa' ? new Date().toISOString().split('T')[0] : undefined,
           };
         }
-        return item;
-      }),
-    }));
+        return i;
+      });
+
+      return {
+        ...prev,
+        groupes: updatedGroupes,
+        inqitaat: updatedInqitaat,
+      };
+    });
   };
 
   const handleDeleteStudent = (id: number) => {
-    onUpdateDb((prev) => ({
-      ...prev,
-      students: (prev.students || []).filter((s) => s.id !== id),
-    }));
+    onUpdateDb((prev) => {
+      const st = (prev.students || []).find((s) => s.id === id);
+      const updatedGroupes = prev.groupes.map((g) => {
+        if (st && g.id === st.groupeId) {
+          return {
+            ...g,
+            eff: Math.max(0, g.eff - 1),
+            filles: st.sexe === 'F' ? Math.max(0, g.filles - 1) : g.filles,
+            garcons: st.sexe === 'M' ? Math.max(0, g.garcons - 1) : g.garcons,
+          };
+        }
+        return g;
+      });
+
+      return {
+        ...prev,
+        groupes: updatedGroupes,
+        students: (prev.students || []).filter((s) => s.id !== id),
+      };
+    });
   };
 
   const handleDeleteInqitaa = (id: number) => {
-    onUpdateDb((prev) => ({
-      ...prev,
-      inqitaat: (prev.inqitaat || []).filter((i) => i.id !== id),
-    }));
+    onUpdateDb((prev) => {
+      const item = (prev.inqitaat || []).find((i) => i.id === id);
+      let updatedGroupes = prev.groupes;
+
+      if (item && item.status === 'monqatia') {
+        updatedGroupes = prev.groupes.map((g) => {
+          if (g.id === item.groupeId) {
+            return {
+              ...g,
+              eff: g.eff + 1,
+              filles: item.sexe === 'F' ? g.filles + 1 : g.filles,
+              garcons: item.sexe === 'M' ? g.garcons + 1 : g.garcons,
+            };
+          }
+          return g;
+        });
+      }
+
+      return {
+        ...prev,
+        groupes: updatedGroupes,
+        inqitaat: (prev.inqitaat || []).filter((i) => i.id !== id),
+      };
+    });
   };
 
   // Metrics
