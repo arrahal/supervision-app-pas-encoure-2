@@ -3,6 +3,7 @@ import { AppData, TabType } from './types';
 import { Language } from './utils/i18n';
 import { loadData, saveData, loadMonthSnapshot, saveMonthSnapshot } from './utils/storage';
 import { saveAccountData, getActiveAccountId } from './utils/accounts';
+import { subscribeAccountDataCloud, saveAccountDataCloud } from './utils/firebase';
 import { Header } from './components/Header';
 import { Navigation } from './components/Navigation';
 import { MonthSplashModal } from './components/MonthSplashModal';
@@ -97,10 +98,35 @@ export default function App() {
   const [gistSettingsModal, setGistSettingsModal] = useState<boolean>(false);
   const [cloudSettingsModal, setCloudSettingsModal] = useState<boolean>(false);
 
-  // Sync state changes with localStorage and supervisor account workspace
+  // Sync state changes with localStorage and supervisor account workspace in Firebase Cloud
   useEffect(() => {
     saveAccountData(getActiveAccountId(), db);
   }, [db]);
+
+  // Real-time synchronization with Firebase Cloud across multiple devices
+  useEffect(() => {
+    if (!isLoggedIn || !db.supervisor?.nom) return;
+
+    const supervisorNom = db.supervisor.nom;
+    const unsub = subscribeAccountDataCloud(supervisorNom, (remoteDb) => {
+      if (remoteDb && remoteDb.supervisor) {
+        setDb((currentLocal) => {
+          // Compare serialized strings to avoid redundant state updates
+          if (JSON.stringify(currentLocal) !== JSON.stringify(remoteDb)) {
+            const activeId = getActiveAccountId();
+            localStorage.setItem(`supData_${activeId}`, JSON.stringify(remoteDb));
+            saveData(remoteDb);
+            return remoteDb;
+          }
+          return currentLocal;
+        });
+      }
+    });
+
+    return () => {
+      unsub();
+    };
+  }, [isLoggedIn, db.supervisor?.nom]);
 
   const handleUpdateDb = (updater: (prev: AppData) => AppData) => {
     setDb((prev) => updater(prev));

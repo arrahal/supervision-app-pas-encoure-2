@@ -111,6 +111,7 @@ export async function fetchAccountDataCloud(accountNom: string): Promise<AppData
   try {
     await ensureAuth();
     const docKey = normalizeAccountKey(accountNom);
+    if (!docKey) return null;
     const docSnap = await getDoc(doc(db, WORKSPACE_COLLECTION, docKey));
     if (docSnap.exists()) {
       const payload = docSnap.data();
@@ -125,22 +126,47 @@ export async function fetchAccountDataCloud(accountNom: string): Promise<AppData
 }
 
 /**
- * Save account workspace data to Firestore
+ * Save account workspace data to Firestore (Clean replace for accurate additions/deletions)
  */
 export async function saveAccountDataCloud(accountNom: string, data: AppData): Promise<void> {
   try {
     await ensureAuth();
     const docKey = normalizeAccountKey(accountNom);
-    await setDoc(
-      doc(db, WORKSPACE_COLLECTION, docKey),
-      {
-        accountNom,
-        data,
-        updatedAt: new Date().toISOString(),
-      },
-      { merge: true }
-    );
+    if (!docKey) return;
+    await setDoc(doc(db, WORKSPACE_COLLECTION, docKey), {
+      accountNom,
+      data,
+      updatedAt: new Date().toISOString(),
+    });
   } catch (error) {
     console.error('Error saving workspace data to Firebase:', error);
   }
+}
+
+/**
+ * Subscribe to real-time changes of account workspace data from Firestore
+ */
+export function subscribeAccountDataCloud(
+  accountNom: string,
+  callback: (data: AppData) => void
+): () => void {
+  ensureAuth();
+  const docKey = normalizeAccountKey(accountNom);
+  if (!docKey) return () => {};
+
+  const unsubscribe = onSnapshot(
+    doc(db, WORKSPACE_COLLECTION, docKey),
+    (docSnap) => {
+      if (docSnap.exists()) {
+        const payload = docSnap.data();
+        if (payload && payload.data) {
+          callback(payload.data as AppData);
+        }
+      }
+    },
+    (error) => {
+      console.error('Realtime account data error:', error);
+    }
+  );
+  return unsubscribe;
 }

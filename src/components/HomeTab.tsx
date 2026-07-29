@@ -94,30 +94,30 @@ export const HomeTab: React.FC<HomeTabProps> = ({
 
       {/* Main KPI Stats */}
       <div className="grid grid-cols-2 gap-3">
-        <div className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-2xl p-4 text-center shadow-md">
-          <span className="text-2xl font-black block leading-none">{totalEff}</span>
-          <span className="text-xs text-blue-100 font-bold mt-1.5 block">
+        <div className="bg-gradient-to-br from-indigo-600 to-blue-600 text-white rounded-2xl p-4 text-center shadow-md border border-indigo-400/20">
+          <span className="text-3xl sm:text-4xl font-black block leading-none">{totalEff}</span>
+          <span className="text-xs text-indigo-100 font-extrabold mt-2 block">
             {lang === 'fr' ? 'Total Élèves' : 'إجمالي التلاميذ'}
           </span>
         </div>
 
-        <div className="bg-gradient-to-br from-emerald-500 to-teal-600 text-white rounded-2xl p-4 text-center shadow-md">
-          <span className="text-2xl font-black block leading-none">{totalFilles}</span>
-          <span className="text-xs text-emerald-100 font-bold mt-1.5 block">
+        <div className="bg-gradient-to-br from-emerald-600 to-teal-600 text-white rounded-2xl p-4 text-center shadow-md border border-emerald-400/20">
+          <span className="text-3xl sm:text-4xl font-black block leading-none">{totalFilles}</span>
+          <span className="text-xs text-emerald-100 font-extrabold mt-2 block">
             {lang === 'fr' ? 'Filles' : 'إجمالي الإناث'}
           </span>
         </div>
 
-        <div className="bg-gradient-to-br from-amber-500 to-orange-600 text-white rounded-2xl p-4 text-center shadow-md">
-          <span className="text-2xl font-black block leading-none">{totalAbs}</span>
-          <span className="text-xs text-amber-100 font-bold mt-1.5 block">
+        <div className="bg-gradient-to-br from-orange-500 to-amber-600 text-white rounded-2xl p-4 text-center shadow-md border border-orange-400/20">
+          <span className="text-3xl sm:text-4xl font-black block leading-none">{totalAbs}</span>
+          <span className="text-xs text-orange-100 font-extrabold mt-2 block">
             {lang === 'fr' ? 'Absences du mois' : 'غيابات الشهر'}
           </span>
         </div>
 
-        <div className="bg-gradient-to-br from-rose-500 to-red-600 text-white rounded-2xl p-4 text-center shadow-md">
-          <span className="text-2xl font-black block leading-none">{tauxAbs}%</span>
-          <span className="text-xs text-rose-100 font-bold mt-1.5 block">
+        <div className="bg-gradient-to-br from-rose-600 to-red-600 text-white rounded-2xl p-4 text-center shadow-md border border-rose-400/20">
+          <span className="text-3xl sm:text-4xl font-black block leading-none">{tauxAbs}%</span>
+          <span className="text-xs text-rose-100 font-extrabold mt-2 block">
             {lang === 'fr' ? 'Taux d\'absence global' : 'نسبة الغياب العامة'}
           </span>
         </div>
@@ -208,22 +208,12 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <div className="text-center">
-                        <span
-                          className={`text-sm font-black ${
-                            visits > 0 ? 'text-emerald-600' : 'text-rose-600'
-                          }`}
-                        >
-                          {visits}
-                        </span>
-                        <span className="text-[10px] text-slate-400 block leading-tight">{t.visit}</span>
-                      </div>
-
                       <button
                         onClick={() => onQuickVisit(a.id)}
-                        className="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-[11px] font-bold px-2.5 py-1 rounded-lg transition cursor-pointer"
+                        className="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-[11px] font-extrabold px-3 py-1.5 rounded-xl shadow-sm transition flex items-center gap-1 cursor-pointer"
                       >
-                        {t.addVisit}
+                        <span className="text-xs font-black">{visits}</span>
+                        <span>+ {t.visit}</span>
                       </button>
                     </div>
                   </div>
