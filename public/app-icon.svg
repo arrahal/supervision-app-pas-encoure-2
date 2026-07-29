@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#f0f4f8"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#0f172a" flood-opacity="0.12"/>
+    </filter>
+  </defs>
+
+  <!-- App Icon Base Background -->
+  <rect width="512" height="512" rx="110" fill="url(#bgGrad)"/>
+  <rect x="12" y="12" width="488" height="488" rx="98" fill="none" stroke="#e2e8f0" stroke-width="6"/>
+
+  <!-- Logo Group Scaled and Centered -->
+  <g transform="translate(56, 40) scale(1.0)">
+    <!-- Book Emblem -->
+    <!-- Teal Right -->
+    <path d="M 200 145 C 205 95, 250 40, 345 15 C 320 40, 260 90, 206 150 Z" fill="#0e8388" />
+    <!-- Gold Right -->
+    <path d="M 204 148 C 215 100, 280 48, 380 25 C 340 60, 265 110, 208 155 Z" fill="#d99b1c" />
+    <!-- Brown Right -->
+    <path d="M 206 155 C 225 120, 310 80, 365 90 C 310 115, 250 145, 212 170 Z" fill="#9c7f68" />
+    
+    <!-- Teal Left -->
+    <path d="M 200 145 C 185 90, 140 45, 105 32 C 145 55, 180 100, 195 148 Z" fill="#0e8388" />
+    <!-- Gold Left -->
+    <path d="M 197 148 C 170 95, 110 50, 52 48 C 105 65, 160 110, 193 153 Z" fill="#d99b1c" />
+    <!-- Brown Left -->
+    <path d="M 194 153 C 160 115, 80 88, 5 105 C 70 115, 145 138, 188 172 Z" fill="#9c7f68" />
+
+    <!-- Teal Diamond Dots -->
+    <polygon points="325,52 333,42 343,52 335,62" fill="#0e8388" />
+    <polygon points="345,52 353,42 363,52 355,62" fill="#0e8388" />
+
+    <!-- Text -->
+    <text x="200" y="225" font-family="'Times New Roman', Georgia, serif" font-size="30" font-weight="700" fill="#6d5a47" text-anchor="middle" letter-spacing="4">
+      FONDATION
+    </text>
+    <text x="200" y="260" font-family="'Times New Roman', Georgia, serif" font-size="34" font-weight="700" fill="#6d5a47" text-anchor="middle" letter-spacing="5">
+      ZAKOURA
+    </text>
+
+    <text x="200" y="315" font-family="'Cairo', sans-serif" font-size="38" font-weight="800" fill="#1e3a8a" text-anchor="middle">
+      المشرف التربوي
+    </text>
+  </g>
+</svg>

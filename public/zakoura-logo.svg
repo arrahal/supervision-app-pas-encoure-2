@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 360" width="100%" height="100%">
+  <!-- Outer Book Sweeps -->
+  <g transform="translate(0, 10)">
+    <!-- Teal Top Center Sweep (Right side) -->
+    <path d="M 200 145 C 205 95, 250 40, 345 15 C 320 40, 260 90, 206 150 Z" fill="#0e8388" />
+    
+    <!-- Gold Middle Sweep (Right side) -->
+    <path d="M 204 148 C 215 100, 280 48, 380 25 C 340 60, 265 110, 208 155 Z" fill="#d99b1c" />
+    
+    <!-- Brown Bottom Sweep (Right side) -->
+    <path d="M 206 155 C 225 120, 310 80, 365 90 C 310 115, 250 145, 212 170 Z" fill="#9c7f68" />
+    
+    <!-- Teal Top Center Sweep (Left side) -->
+    <path d="M 200 145 C 185 90, 140 45, 105 32 C 145 55, 180 100, 195 148 Z" fill="#0e8388" />
+    
+    <!-- Gold Middle Sweep (Left side) -->
+    <path d="M 197 148 C 170 95, 110 50, 52 48 C 105 65, 160 110, 193 153 Z" fill="#d99b1c" />
+    
+    <!-- Brown Bottom Sweep (Left side) -->
+    <path d="M 194 153 C 160 115, 80 88, 5 105 C 70 115, 145 138, 188 172 Z" fill="#9c7f68" />
+
+    <!-- Two Teal Diamond Dots (Top Right) -->
+    <polygon points="325,52 333,42 343,52 335,62" fill="#0e8388" />
+    <polygon points="345,52 353,42 363,52 355,62" fill="#0e8388" />
+  </g>
+
+  <!-- Fondation Zakoura Text -->
+  <text x="200" y="225" font-family="'Times New Roman', Georgia, serif" font-size="32" font-weight="600" fill="#6d5a47" text-anchor="middle" letter-spacing="4">
+    FONDATION
+  </text>
+  <text x="200" y="265" font-family="'Times New Roman', Georgia, serif" font-size="36" font-weight="600" fill="#6d5a47" text-anchor="middle" letter-spacing="6">
+    ZAKOURA
+  </text>
+
+  <!-- Tagline Script -->
+  <text x="200" y="325" font-family="'Brush Script MT', 'Caveat', 'Segoe Script', cursive" font-size="42" font-style="italic" fill="#0e8388" text-anchor="middle">
+    Le devoir d'agir
+  </text>
+</svg>

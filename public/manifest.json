@@ -1,0 +1,25 @@
+{
+  "name": "المشرف التربوي — مؤسسة زاكورة",
+  "short_name": "المشرف التربوي",
+  "description": "تطبيق التأطير والتتبع التربوي والزيارات الميدانية — مؤسسة زاكورة",
+  "start_url": "/",
+  "id": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#1e40af",
+  "icons": [
+    {
+      "src": "/app-icon.svg",
+      "sizes": "512x512 192x192 128x128 64x64",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/zakoura-logo.svg",
+      "sizes": "400x360",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

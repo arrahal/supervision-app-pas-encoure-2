@@ -35,20 +35,25 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header className="bg-gradient-to-r from-blue-800 via-blue-700 to-indigo-800 text-white px-4 pt-3 pb-3 shadow-md flex-shrink-0">
       <div className="flex items-center justify-between mb-3 gap-2">
-        <button
-          onClick={onOpenSupervisorModal}
-          className="text-right flex-1 group hover:opacity-90 transition cursor-pointer"
-        >
-          <div className="flex items-center gap-1.5">
-            <h1 className="text-sm sm:text-base font-extrabold tracking-tight text-white flex items-center gap-1.5">
-              <span>{supervisorName}</span>
-              <Edit3 className="w-3.5 h-3.5 opacity-70 group-hover:opacity-100" />
-            </h1>
+        <div className="flex items-center gap-2.5 flex-1 min-w-0">
+          <div className="w-10 h-10 bg-white rounded-xl p-1 shadow-md border border-white/20 flex items-center justify-center flex-shrink-0">
+            <img src="/zakoura-logo.svg" alt="Fondation Zakoura" className="w-full h-full object-contain" />
           </div>
-          <p className="text-[11px] text-blue-100/90 font-medium mt-0.5 line-clamp-1">
-            {project} {location ? `— ${location}` : ''}
-          </p>
-        </button>
+          <button
+            onClick={onOpenSupervisorModal}
+            className="text-right group hover:opacity-90 transition cursor-pointer min-w-0 flex-1"
+          >
+            <div className="flex items-center gap-1.5">
+              <h1 className="text-sm sm:text-base font-extrabold tracking-tight text-white flex items-center gap-1.5">
+                <span className="truncate">{supervisorName}</span>
+                <Edit3 className="w-3.5 h-3.5 opacity-70 group-hover:opacity-100 flex-shrink-0" />
+              </h1>
+            </div>
+            <p className="text-[11px] text-blue-100/90 font-medium mt-0.5 truncate">
+              {project} {location ? `— ${location}` : ''}
+            </p>
+          </button>
+        </div>
 
         <div className="flex items-center gap-1.5 flex-shrink-0">
           {/* Language Toggle Button */}
