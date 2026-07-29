@@ -40,11 +40,20 @@ const ACCOUNTS_COLLECTION = 'supervisorAccounts';
 const WORKSPACE_COLLECTION = 'supervisorData';
 
 // Quota circuit breaker to protect app from Firestore free tier quota errors
-let isQuotaExhausted = false;
+const TODAY_DATE = new Date().toISOString().split('T')[0];
+const SAVED_QUOTA_DATE = localStorage.getItem('firestore_quota_date');
+let isQuotaExhausted = SAVED_QUOTA_DATE === TODAY_DATE;
+
+if (isQuotaExhausted) {
+  disableNetwork(db).catch(() => {});
+}
 
 function triggerQuotaFallback() {
   if (!isQuotaExhausted) {
     isQuotaExhausted = true;
+    try {
+      localStorage.setItem('firestore_quota_date', TODAY_DATE);
+    } catch (e) {}
     console.warn('Firestore daily write/read quota limit reached. Disabling network background sync to fall back seamlessly to local storage.');
     disableNetwork(db).catch(() => {});
   }
