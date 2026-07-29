@@ -1638,8 +1638,16 @@ export const GistSettingsModal: React.FC<{
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="⚙️ إعدادات GitHub Gist">
       <div className="space-y-3.5 text-xs">
-        <div className="bg-blue-50 border border-blue-200 p-3 rounded-2xl text-blue-900 leading-relaxed font-medium">
-          🔐 يُخزَّن التوكن محلياً على جهازك فقط ولا يُرسل لأي خادم خارجي غير GitHub.
+        <div className="bg-blue-50 border border-blue-200 p-3 rounded-2xl text-blue-900 leading-relaxed font-medium space-y-1.5">
+          <p>🔐 يُخزَّن التوكن محلياً على جهازك لربط التطبيق بحسابك في GitHub ومزامنة بياناتك تلقائياً دون ملفات.</p>
+          <a
+            href="https://github.com/settings/tokens/new?description=SuperviseurPedagogiqueApp&scopes=gist"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-blue-700 font-extrabold underline hover:text-blue-900 pt-0.5"
+          >
+            <span>🔗 اضغط هنا لإنشاء توكن GitHub بخيار gist بضغطة زر</span>
+          </a>
         </div>
 
         <div>
@@ -1770,6 +1778,7 @@ export const SupervisorModal: React.FC<{
   const [project, setProject] = useState(sup.project || '');
   const [region, setRegion] = useState(sup.region || '');
   const [province, setProvince] = useState(sup.province || '');
+  const [password, setPassword] = useState(sup.password || '123456');
 
   useEffect(() => {
     if (db.supervisor) {
@@ -1777,6 +1786,7 @@ export const SupervisorModal: React.FC<{
       setProject(db.supervisor.project || '');
       setRegion(db.supervisor.region || '');
       setProvince(db.supervisor.province || '');
+      setPassword(db.supervisor.password || '123456');
     }
   }, [isOpen, db.supervisor]);
 
@@ -1789,6 +1799,7 @@ export const SupervisorModal: React.FC<{
         project: project.trim() || 'مشروع التأطير التربوي',
         region: region.trim() || 'الأكاديمية الجهوية',
         province: province.trim() || 'المديرية الإقليمية',
+        password: password.trim() || '123456',
       },
     }));
     alert('✅ تم حفظ معلومات وحساب المشرف التربوي بنجاح!');
@@ -1883,6 +1894,19 @@ export const SupervisorModal: React.FC<{
               className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500"
             />
           </div>
+        </div>
+
+        <div>
+          <label className="block text-slate-700 font-bold mb-1">🔑 كلمة مرور دخول المشرف *</label>
+          <input
+            type="text"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="كلمة المرور للدخول (الافتراضية: 123456)"
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500 font-mono"
+          />
+          <p className="text-[10px] text-slate-500 mt-1">تُستخدم كلمة المرور هذه للتحقق وتسجيل دخول المشرف لحسابه في هذا الجهاز.</p>
         </div>
 
         <div className="pt-2 flex flex-col gap-2">

@@ -5,7 +5,7 @@ import { loadData, saveData, loadMonthSnapshot, saveMonthSnapshot } from './util
 import { Header } from './components/Header';
 import { Navigation } from './components/Navigation';
 import { MonthSplashModal } from './components/MonthSplashModal';
-import { LoginScreen } from './components/LoginScreen';
+import { LoginModal } from './components/LoginModal';
 import { HomeTab } from './components/HomeTab';
 import { VisitsTab } from './components/VisitsTab';
 import { AbsencesTab } from './components/AbsencesTab';
@@ -119,19 +119,6 @@ export default function App() {
     });
   };
 
-  // Show Login Screen as Page 1 if not logged in
-  if (!isLoggedIn) {
-    return (
-      <LoginScreen
-        db={db}
-        lang={lang}
-        onLoginSuccess={() => setIsLoggedIn(true)}
-        onUpdateDb={handleUpdateDb}
-        onToggleLang={handleToggleLang}
-      />
-    );
-  }
-
   return (
     <div
       dir={lang === 'ar' ? 'rtl' : 'ltr'}
@@ -144,7 +131,7 @@ export default function App() {
         onToggleLang={handleToggleLang}
         onOpenMonthSelector={() => setIsMonthSplashOpen(true)}
         onOpenSupervisorModal={() => setSupervisorModal(true)}
-        onLogout={() => setIsLoggedIn(false)}
+        onLockApp={() => setIsLoggedIn(false)}
       />
 
       {/* Main Content View */}
@@ -360,6 +347,15 @@ export default function App() {
         isOpen={cloudSettingsModal}
         onClose={() => setCloudSettingsModal(false)}
       />
+
+      {/* Login / Authentication Modal */}
+      {!isLoggedIn && (
+        <LoginModal
+          db={db}
+          lang={lang}
+          onLoginSuccess={() => setIsLoggedIn(true)}
+        />
+      )}
     </div>
   );
 }
