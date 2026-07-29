@@ -123,7 +123,7 @@ export default function App() {
   return (
     <div
       dir={lang === 'ar' ? 'rtl' : 'ltr'}
-      className="min-h-screen bg-slate-100 flex flex-col justify-between max-w-md mx-auto shadow-2xl relative overflow-x-hidden font-['Cairo',sans-serif]"
+      className="h-[100dvh] bg-slate-100 flex flex-col justify-between w-full max-w-xl mx-auto shadow-2xl relative overflow-hidden font-['Cairo',sans-serif]"
     >
       {/* Header */}
       <Header

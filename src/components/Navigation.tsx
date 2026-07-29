@@ -34,7 +34,7 @@ export const Navigation: React.FC<NavigationProps> = ({ currentTab, lang, onSele
 
   return (
     <nav className="bg-white border-t border-slate-200 shadow-xl flex-shrink-0 relative z-30">
-      <div className="flex items-center overflow-x-auto scrollbar-none max-w-md mx-auto px-1 py-1.5 gap-1 justify-between">
+      <div className="flex items-center overflow-x-auto scrollbar-none touch-pan-x max-w-xl mx-auto px-2 py-1.5 gap-1.5 justify-start sm:justify-center">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = currentTab === tab.id;
@@ -42,7 +42,7 @@ export const Navigation: React.FC<NavigationProps> = ({ currentTab, lang, onSele
             <button
               key={tab.id}
               onClick={() => onSelectTab(tab.id)}
-              className={`flex-shrink-0 px-2 py-1.5 rounded-xl flex flex-col items-center justify-center gap-1 transition-all duration-200 cursor-pointer min-w-[62px] ${
+              className={`flex-shrink-0 px-2.5 py-1.5 rounded-xl flex flex-col items-center justify-center gap-1 transition-all duration-200 cursor-pointer min-w-[58px] ${
                 isActive
                   ? 'bg-blue-600 text-white shadow-md font-bold scale-102'
                   : 'text-slate-500 hover:text-blue-600 hover:bg-slate-50 font-medium'

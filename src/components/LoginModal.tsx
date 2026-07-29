@@ -156,8 +156,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({ db, lang, onLoginSuccess
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-fadeIn">
-      <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-md w-full overflow-hidden p-6 sm:p-8 space-y-5">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/80 backdrop-blur-md animate-fadeIn">
+      <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-md w-full p-5 sm:p-8 space-y-4 sm:space-y-5 max-h-[88dvh] sm:max-h-[90dvh] overflow-y-auto">
         {/* Header Branding */}
         <div className="text-center space-y-2">
           <div className="w-16 h-16 mx-auto bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200/80 rounded-2xl p-2 shadow-inner flex items-center justify-center">
