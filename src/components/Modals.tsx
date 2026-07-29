@@ -1793,6 +1793,8 @@ export const CloudSettingsModal: React.FC<{
   );
 };
 
+import { updateCurrentSupervisorAccount, getActiveAccountId } from '../utils/accounts';
+
 // ================= SUPERVISOR PROFILE & DATA RESET MODAL =================
 export const SupervisorModal: React.FC<{
   isOpen: boolean;
@@ -1819,14 +1821,28 @@ export const SupervisorModal: React.FC<{
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+    const updatedNom = nom.trim() || 'المشرف التربوي';
+    const updatedPass = password.trim() || '123456';
+    const updatedProj = project.trim();
+    const updatedReg = region.trim();
+    const updatedProv = province.trim();
+
+    updateCurrentSupervisorAccount(getActiveAccountId(), {
+      nom: updatedNom,
+      password: updatedPass,
+      project: updatedProj,
+      region: updatedReg,
+      province: updatedProv,
+    });
+
     onUpdateDb((prev) => ({
       ...prev,
       supervisor: {
-        nom: nom.trim() || 'المشرف التربوي',
-        project: project.trim() || 'مشروع التأطير التربوي',
-        region: region.trim() || 'الأكاديمية الجهوية',
-        province: province.trim() || 'المديرية الإقليمية',
-        password: password.trim() || '123456',
+        nom: updatedNom,
+        project: updatedProj,
+        region: updatedReg,
+        province: updatedProv,
+        password: updatedPass,
       },
     }));
     alert('✅ تم حفظ معلومات وحساب المشرف التربوي بنجاح!');
@@ -1843,9 +1859,9 @@ export const SupervisorModal: React.FC<{
         ...prev,
         supervisor: {
           nom: nom.trim() || 'المشرف التربوي',
-          project: project.trim() || 'مشروع الدعم والارتقاء بالتأطير التربوي',
-          region: region.trim() || 'الأكاديمية الجهوية',
-          province: province.trim() || 'المديرية الإقليمية',
+          project: project.trim(),
+          region: region.trim(),
+          province: province.trim(),
         },
         animateurs: [],
         ecoles: [],
@@ -1880,44 +1896,41 @@ export const SupervisorModal: React.FC<{
             required
             value={nom}
             onChange={(e) => setNom(e.target.value)}
-            placeholder="مثال: د. عبد الله العمري"
+            placeholder="اسم المشرف التربوي"
             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
         <div>
-          <label className="block text-slate-700 font-bold mb-1">اسم المشروع / البرنامج *</label>
+          <label className="block text-slate-700 font-bold mb-1">اسم المشروع / البرنامج</label>
           <input
             type="text"
-            required
             value={project}
             onChange={(e) => setProject(e.target.value)}
-            placeholder="مثال: مشروع برنامج الدعم التربوي / TaRL / أوراش"
+            placeholder="اسم المشروع التربوي"
             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className="block text-slate-700 font-bold mb-1">الجهة / الأكاديمية *</label>
+            <label className="block text-slate-700 font-bold mb-1">الجهة / الأكاديمية</label>
             <input
               type="text"
-              required
               value={region}
               onChange={(e) => setRegion(e.target.value)}
-              placeholder="مثال: جهة مراكش آسفي"
+              placeholder="الجهة / الأكاديمية"
               className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
           <div>
-            <label className="block text-slate-700 font-bold mb-1">الإقليم / المديرية *</label>
+            <label className="block text-slate-700 font-bold mb-1">الإقليم / المديرية</label>
             <input
               type="text"
-              required
               value={province}
               onChange={(e) => setProvince(e.target.value)}
-              placeholder="مثال: المديرية الإقليمية مراكش"
+              placeholder="المديرية الإقليمية"
               className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500"
             />
           </div>

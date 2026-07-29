@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { AppData, TabType } from './types';
 import { Language } from './utils/i18n';
 import { loadData, saveData, loadMonthSnapshot, saveMonthSnapshot } from './utils/storage';
+import { saveAccountData, getActiveAccountId } from './utils/accounts';
 import { Header } from './components/Header';
 import { Navigation } from './components/Navigation';
 import { MonthSplashModal } from './components/MonthSplashModal';
@@ -96,9 +97,9 @@ export default function App() {
   const [gistSettingsModal, setGistSettingsModal] = useState<boolean>(false);
   const [cloudSettingsModal, setCloudSettingsModal] = useState<boolean>(false);
 
-  // Sync state changes with localStorage
+  // Sync state changes with localStorage and supervisor account workspace
   useEffect(() => {
-    saveData(db);
+    saveAccountData(getActiveAccountId(), db);
   }, [db]);
 
   const handleUpdateDb = (updater: (prev: AppData) => AppData) => {
@@ -353,7 +354,10 @@ export default function App() {
         <LoginModal
           db={db}
           lang={lang}
-          onLoginSuccess={() => setIsLoggedIn(true)}
+          onLoginSuccess={(_account, loadedDb) => {
+            setDb(loadedDb);
+            setIsLoggedIn(true);
+          }}
         />
       )}
     </div>

@@ -38,9 +38,9 @@ export const ZONES: string[] = ['المنطقة 1', 'المنطقة 2', 'الم�
 
 export const INITIAL_SUPERVISOR: SupervisorInfo = {
   nom: 'المشرف التربوي',
-  project: 'برنامج الدعم التربوي والتأطير',
-  region: 'جهة مراكش آسفي',
-  province: 'المديرية الإقليمية',
+  project: '',
+  region: '',
+  province: '',
   password: '123456',
 };
 
