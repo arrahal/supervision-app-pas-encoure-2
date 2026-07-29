@@ -5,6 +5,7 @@ import { loadData, saveData, loadMonthSnapshot, saveMonthSnapshot } from './util
 import { Header } from './components/Header';
 import { Navigation } from './components/Navigation';
 import { MonthSplashModal } from './components/MonthSplashModal';
+import { LoginScreen } from './components/LoginScreen';
 import { HomeTab } from './components/HomeTab';
 import { VisitsTab } from './components/VisitsTab';
 import { AbsencesTab } from './components/AbsencesTab';
@@ -35,6 +36,7 @@ export default function App() {
   const [db, setDb] = useState<AppData>(() => loadData());
   const [currentTab, setCurrentTab] = useState<TabType>('home');
   const [lang, setLang] = useState<Language>('ar');
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
 
   // Month Splash state
   const [isMonthSplashOpen, setIsMonthSplashOpen] = useState<boolean>(false);
@@ -117,6 +119,19 @@ export default function App() {
     });
   };
 
+  // Show Login Screen as Page 1 if not logged in
+  if (!isLoggedIn) {
+    return (
+      <LoginScreen
+        db={db}
+        lang={lang}
+        onLoginSuccess={() => setIsLoggedIn(true)}
+        onUpdateDb={handleUpdateDb}
+        onToggleLang={handleToggleLang}
+      />
+    );
+  }
+
   return (
     <div
       dir={lang === 'ar' ? 'rtl' : 'ltr'}
@@ -129,6 +144,7 @@ export default function App() {
         onToggleLang={handleToggleLang}
         onOpenMonthSelector={() => setIsMonthSplashOpen(true)}
         onOpenSupervisorModal={() => setSupervisorModal(true)}
+        onLogout={() => setIsLoggedIn(false)}
       />
 
       {/* Main Content View */}

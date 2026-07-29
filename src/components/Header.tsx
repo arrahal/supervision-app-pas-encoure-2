@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calendar, UserCog, Edit3, Globe } from 'lucide-react';
+import { Calendar, UserCog, Edit3, Globe, LogOut } from 'lucide-react';
 import { AppData } from '../types';
 import { MONTHS_AR } from '../data/initialData';
 import { Language, translations, MONTHS_FR } from '../utils/i18n';
@@ -10,6 +10,7 @@ interface HeaderProps {
   onToggleLang: () => void;
   onOpenMonthSelector: () => void;
   onOpenSupervisorModal: () => void;
+  onLogout?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -18,6 +19,7 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleLang,
   onOpenMonthSelector,
   onOpenSupervisorModal,
+  onLogout,
 }) => {
   const t = translations[lang];
   const totalEff = db.groupes.reduce((a, g) => a + g.eff, 0);
@@ -74,6 +76,16 @@ export const Header: React.FC<HeaderProps> = ({
             <UserCog className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">{t.supervisorAccount}</span>
           </button>
+
+          {onLogout && (
+            <button
+              onClick={onLogout}
+              title={lang === 'fr' ? 'Déconnexion / Verrouiller' : 'تسجيل الخروج / قفل'}
+              className="flex items-center gap-1 bg-rose-500/30 hover:bg-rose-500/40 text-rose-100 active:scale-95 transition px-2 py-1.5 rounded-full text-xs font-bold border border-rose-300/40 backdrop-blur-sm cursor-pointer"
+            >
+              <LogOut className="w-3.5 h-3.5 text-rose-200" />
+            </button>
+          )}
 
           <button
             onClick={onOpenMonthSelector}
