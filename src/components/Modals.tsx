@@ -1638,37 +1638,64 @@ export const GistSettingsModal: React.FC<{
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="⚙️ إعدادات GitHub Gist">
       <div className="space-y-3.5 text-xs">
-        <div className="bg-blue-50 border border-blue-200 p-3 rounded-2xl text-blue-900 leading-relaxed font-medium space-y-1.5">
-          <p>🔐 يُخزَّن التوكن محلياً على جهازك لربط التطبيق بحسابك في GitHub ومزامنة بياناتك تلقائياً دون ملفات.</p>
+        <div className="bg-blue-50 border border-blue-200 p-3 rounded-2xl text-blue-900 leading-relaxed font-medium space-y-2">
+          <p className="font-bold text-blue-950">🔐 مزامنة سحابية آمنة ومباشرة مع حسابك على GitHub:</p>
           <a
             href="https://github.com/settings/tokens/new?description=SuperviseurPedagogiqueApp&scopes=gist"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-blue-700 font-extrabold underline hover:text-blue-900 pt-0.5"
+            className="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold px-3 py-1.5 rounded-xl shadow-sm transition text-xs"
           >
-            <span>🔗 اضغط هنا لإنشاء توكن GitHub بخيار gist بضغطة زر</span>
+            <span>🔗 اضغط هنا لإنشاء توكن GitHub جاهز بضغطة زر</span>
           </a>
         </div>
 
+        {/* Step-by-step accordion guide */}
+        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 space-y-2 text-slate-700">
+          <p className="font-extrabold text-slate-900 text-[11px] flex items-center gap-1">
+            📖 <span>دليل الحصول على التوكن والمعرّف (خطوة بخطوة):</span>
+          </p>
+
+          <div className="space-y-1.5 text-[11px] text-slate-600 leading-relaxed">
+            <div className="bg-white p-2 rounded-xl border border-slate-200 space-y-1">
+              <p className="font-bold text-blue-900">1️⃣ الحصول على Personal Access Token:</p>
+              <ol className="list-decimal list-inside space-y-0.5 text-[10.5px]">
+                <li>اضغط على الزر الأزرق أعلاه للانتقال لصفحة التوكن في GitHub.</li>
+                <li>تأكد من تفعيل خيار <strong className="text-slate-800">gist</strong> (المسؤول عن تخزين الملفات).</li>
+                <li>انزل لأسفل الصفحة واضغط <strong className="text-emerald-700">Generate token</strong>.</li>
+                <li>انسخ الكود الناتج (يبدأ بـ <code className="bg-slate-100 px-1 rounded text-blue-700 dir-ltr font-mono">ghp_...</code>) والصقه بالأسفل.</li>
+              </ol>
+            </div>
+
+            <div className="bg-white p-2 rounded-xl border border-slate-200 space-y-1">
+              <p className="font-bold text-indigo-900">2️⃣ معرف الـ Gist ID (اختياري/تلقائي):</p>
+              <ul className="list-disc list-inside space-y-0.5 text-[10.5px]">
+                <li><strong className="text-emerald-700">تلقائياً:</strong> اترك الخانة فارغة! عند أول عملية "رفع للبيانات"، سينشئ التطبيق Gist جديداً بحسابك ويملأ ID تلقائياً.</li>
+                <li><strong className="text-slate-800">يدوياً (للاسترجاع على جهاز آخر):</strong> انسخ المعرّف الموجود في نهاية رابط الـ Gist بـ GitHub (مثال: <span className="font-mono text-[10px] bg-slate-100 p-0.5 rounded">gist.github.com/user/<b>6f8a9b2c...</b></span>).</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
         <div>
-          <label className="block text-slate-600 font-bold mb-1">GitHub Personal Access Token</label>
+          <label className="block text-slate-700 font-bold mb-1">🔑 GitHub Personal Access Token *</label>
           <input
             type="password"
             value={token}
             onChange={(e) => setToken(e.target.value)}
             placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-mono text-slate-800 dir-ltr"
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-mono text-slate-800 dir-ltr focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none"
           />
         </div>
 
         <div>
-          <label className="block text-slate-600 font-bold mb-1">Gist ID (يُملأ تلقائياً بعد أول رفع)</label>
+          <label className="block text-slate-700 font-bold mb-1">🆔 Gist ID (يُملأ تلقائياً عند أول رفع)</label>
           <input
             type="text"
             value={gistId}
             onChange={(e) => setGistId(e.target.value)}
-            placeholder="سيظهر هنا بعد الحفظ الأول"
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-mono text-slate-800 dir-ltr"
+            placeholder="سيتم إنشاؤه وتعبئته تلقائياً عند الرفع الأول"
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-mono text-slate-800 dir-ltr focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none"
           />
         </div>
 
