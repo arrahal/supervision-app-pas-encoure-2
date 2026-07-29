@@ -1,6 +1,12 @@
 import { AppData } from '../types';
 import { INITIAL_DATA, INITIAL_SUPERVISOR } from '../data/initialData';
 import { saveData, loadData } from './storage';
+import {
+  saveSupervisorAccountCloud,
+  saveAccountDataCloud,
+  fetchAccountDataCloud,
+  fetchSupervisorAccountsCloud,
+} from './firebase';
 
 export interface SupervisorAccount {
   id: string;
@@ -50,6 +56,8 @@ export function getSupervisorAccounts(): SupervisorAccount[] {
 export function saveSupervisorAccountsList(accounts: SupervisorAccount[]): void {
   try {
     localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
+    // Save all to cloud
+    accounts.forEach((acc) => saveSupervisorAccountCloud(acc));
   } catch (e) {
     console.error('Failed to save accounts list', e);
   }
@@ -100,6 +108,9 @@ export function saveAccountData(accountId: string, data: AppData): void {
   try {
     localStorage.setItem(`supData_${accountId}`, JSON.stringify(data));
     saveData(data);
+    if (data.supervisor?.nom) {
+      saveAccountDataCloud(data.supervisor.nom, data);
+    }
   } catch (e) {
     console.error('Failed to save account data', e);
   }
@@ -140,6 +151,8 @@ export function createSupervisorAccount(
   };
 
   saveAccountData(newId, initialWorkspace);
+  saveSupervisorAccountCloud(newAcc);
+  saveAccountDataCloud(newAcc.nom, initialWorkspace);
 
   return { account: newAcc, data: initialWorkspace };
 }
@@ -151,9 +164,12 @@ export function updateCurrentSupervisorAccount(
   const accounts = getSupervisorAccounts();
   const updatedAccounts = accounts.map((acc) => {
     if (acc.id === accountId) {
-      return { ...acc, ...updates };
+      const updated = { ...acc, ...updates };
+      saveSupervisorAccountCloud(updated);
+      return updated;
     }
     return acc;
   });
   saveSupervisorAccountsList(updatedAccounts);
 }
+

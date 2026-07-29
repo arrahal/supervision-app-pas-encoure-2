@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Lock, User, KeyRound, AlertCircle, Eye, EyeOff, LogIn, UserPlus, CheckCircle2 } from 'lucide-react';
+import { Lock, User, KeyRound, AlertCircle, Eye, EyeOff, LogIn, UserPlus, CheckCircle2, Loader2, Cloud } from 'lucide-react';
 import { AppData } from '../types';
 import { Language } from '../utils/i18n';
 import {
@@ -8,7 +8,14 @@ import {
   loadAccountData,
   createSupervisorAccount,
   setActiveAccountId,
+  saveSupervisorAccountsList,
+  saveAccountData,
 } from '../utils/accounts';
+import {
+  fetchSupervisorAccountsCloud,
+  fetchAccountDataCloud,
+  subscribeSupervisorAccountsCloud,
+} from '../utils/firebase';
 
 interface LoginModalProps {
   db: AppData;
@@ -19,6 +26,7 @@ interface LoginModalProps {
 export const LoginModal: React.FC<LoginModalProps> = ({ db, lang, onLoginSuccess }) => {
   const [mode, setMode] = useState<'login' | 'create'>('login');
   const [accounts, setAccounts] = useState<SupervisorAccount[]>([]);
+  const [isSyncingCloud, setIsSyncingCloud] = useState<boolean>(false);
 
   // Login form state
   const [usernameInput, setUsernameInput] = useState<string>('');
@@ -33,7 +41,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ db, lang, onLoginSuccess
   const [newRegion, setNewRegion] = useState<string>('');
   const [newProvince, setNewProvince] = useState<string>('');
 
-  // Load existing supervisor accounts on mount
+  // Load existing supervisor accounts on mount & subscribe to cloud accounts updates
   useEffect(() => {
     const list = getSupervisorAccounts();
     setAccounts(list);
@@ -44,10 +52,26 @@ export const LoginModal: React.FC<LoginModalProps> = ({ db, lang, onLoginSuccess
     } else if (db.supervisor?.nom && db.supervisor.nom !== 'المشرف التربوي') {
       setUsernameInput(db.supervisor.nom);
     }
+
+    // Subscribe to Firebase Cloud accounts realtime updates
+    const unsub = subscribeSupervisorAccountsCloud((cloudAccounts) => {
+      if (cloudAccounts && cloudAccounts.length > 0) {
+        setAccounts((prev) => {
+          const mergedMap = new Map<string, SupervisorAccount>();
+          prev.forEach((a) => mergedMap.set(a.nom.trim().toLowerCase(), a));
+          cloudAccounts.forEach((ca) => mergedMap.set(ca.nom.trim().toLowerCase(), ca));
+          const merged = Array.from(mergedMap.values());
+          saveSupervisorAccountsList(merged);
+          return merged;
+        });
+      }
+    });
+
+    return () => unsub();
   }, [db]);
 
-  // Login action
-  const handleLogin = (e: React.FormEvent) => {
+  // Login action with Cloud Sync
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
 
@@ -64,20 +88,38 @@ export const LoginModal: React.FC<LoginModalProps> = ({ db, lang, onLoginSuccess
       return;
     }
 
-    // Check against existing accounts first
-    let matchedAccount = accounts.find(
-      (acc) => acc.nom.trim().toLowerCase() === trimmedName.toLowerCase()
-    );
+    setIsSyncingCloud(true);
 
-    // Fallback match check with current db supervisor
-    if (!matchedAccount && db.supervisor) {
-      if (
-        db.supervisor.nom.trim().toLowerCase() === trimmedName.toLowerCase() &&
-        (db.supervisor.password || '123456') === trimmedPass
-      ) {
-        // Log in with current db
-        onLoginSuccess(
-          {
+    try {
+      // 1. Check local list first
+      let matchedAccount = accounts.find(
+        (acc) => acc.nom.trim().toLowerCase() === trimmedName.toLowerCase()
+      );
+
+      // 2. If not found locally, fetch latest accounts list directly from Firebase Cloud
+      if (!matchedAccount) {
+        const cloudAccounts = await fetchSupervisorAccountsCloud();
+        if (cloudAccounts && cloudAccounts.length > 0) {
+          matchedAccount = cloudAccounts.find(
+            (acc) => acc.nom.trim().toLowerCase() === trimmedName.toLowerCase()
+          );
+          if (matchedAccount) {
+            // Update local list
+            const currentList = getSupervisorAccounts();
+            const updated = [...currentList.filter((a) => a.nom.trim().toLowerCase() !== trimmedName.toLowerCase()), matchedAccount];
+            saveSupervisorAccountsList(updated);
+            setAccounts(updated);
+          }
+        }
+      }
+
+      // 3. Fallback match check with current db supervisor if single account
+      if (!matchedAccount && db.supervisor) {
+        if (
+          db.supervisor.nom.trim().toLowerCase() === trimmedName.toLowerCase() &&
+          (db.supervisor.password || '123456') === trimmedPass
+        ) {
+          const defaultAccount: SupervisorAccount = {
             id: 'sup_default',
             nom: db.supervisor.nom,
             password: db.supervisor.password || '123456',
@@ -85,31 +127,53 @@ export const LoginModal: React.FC<LoginModalProps> = ({ db, lang, onLoginSuccess
             region: db.supervisor.region || '',
             province: db.supervisor.province || '',
             createdAt: new Date().toISOString(),
-          },
-          db
-        );
-        return;
-      }
-    }
+          };
 
-    if (matchedAccount) {
-      if (matchedAccount.password === trimmedPass) {
-        setActiveAccountId(matchedAccount.id);
-        const accountWorkspace = loadAccountData(matchedAccount);
-        onLoginSuccess(matchedAccount, accountWorkspace);
+          // Try fetching cloud workspace data
+          const cloudData = await fetchAccountDataCloud(defaultAccount.nom);
+          const finalData = cloudData || db;
+          saveAccountData(defaultAccount.id, finalData);
+
+          setIsSyncingCloud(false);
+          onLoginSuccess(defaultAccount, finalData);
+          return;
+        }
+      }
+
+      if (matchedAccount) {
+        if (matchedAccount.password === trimmedPass) {
+          setActiveAccountId(matchedAccount.id);
+
+          // Attempt to fetch latest cloud workspace data for this account
+          const cloudData = await fetchAccountDataCloud(matchedAccount.nom);
+          const localData = loadAccountData(matchedAccount);
+          const accountWorkspace = cloudData || localData;
+
+          // Save combined data locally
+          saveAccountData(matchedAccount.id, accountWorkspace);
+
+          setIsSyncingCloud(false);
+          onLoginSuccess(matchedAccount, accountWorkspace);
+        } else {
+          setIsSyncingCloud(false);
+          setErrorMsg(
+            lang === 'fr'
+              ? `Mot de passe incorrect pour ${matchedAccount.nom}.`
+              : `كلمة المرور غير صحيحة للمشرف: (${matchedAccount.nom}).`
+          );
+        }
       } else {
+        setIsSyncingCloud(false);
         setErrorMsg(
           lang === 'fr'
-            ? `Mot de passe incorrect pour ${matchedAccount.nom}.`
-            : `كلمة المرور غير صحيحة للمشرف: (${matchedAccount.nom}).`
+            ? 'Aucun compte trouvé avec ce nom. Vous pouvez créer un nouveau compte.'
+            : 'لم يتم العثور على حساب بهذا الاسم. يمكنك إنشاء حساب مشرف جديد من خيار "+ حساب مشرف جديد" بالأعلى.'
         );
       }
-    } else {
-      setErrorMsg(
-        lang === 'fr'
-          ? 'Aucun compte trouvé avec ce nom. Vous pouvez créer un جديد.'
-          : 'لم يتم العثور على حساب بهذا الاسم. يمكنك إنشاء حساب مشرف جديد من خيار "+ حساب مشرف جديد" بالأعلى.'
-      );
+    } catch (err) {
+      console.error('Login error:', err);
+      setIsSyncingCloud(false);
+      setErrorMsg('حدث خطأ أثناء الاتصال بالسحابة. يرجى التحقق من الاتصال بالإنترنت.');
     }
   };
 
@@ -137,7 +201,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ db, lang, onLoginSuccess
       setErrorMsg(
         lang === 'fr'
           ? 'Un compte existe déjà avec ce nom. Veuillez vous connecter.'
-          : 'يوجد حساب مسجل بالفعل بهذا الاسم! يمكنك اختيار الاسم من قائمة تسجيل الدخول وإدخال كلمة المرور.'
+          : 'يوجد حساب مسجل بالفعل بهذا الاسم! يمكنك أدخال اسمك وكلمة المرور لتسجيل الدخول.'
       );
       return;
     }
@@ -262,10 +326,20 @@ export const LoginModal: React.FC<LoginModalProps> = ({ db, lang, onLoginSuccess
             {/* Submit Login */}
             <button
               type="submit"
-              className="w-full bg-gradient-to-r from-blue-700 to-indigo-700 hover:from-blue-800 hover:to-indigo-800 active:scale-98 text-white font-extrabold text-xs py-3 px-4 rounded-2xl shadow-lg shadow-blue-500/20 transition flex items-center justify-center gap-2 cursor-pointer mt-1"
+              disabled={isSyncingCloud}
+              className="w-full bg-gradient-to-r from-blue-700 to-indigo-700 hover:from-blue-800 hover:to-indigo-800 active:scale-98 text-white font-extrabold text-xs py-3 px-4 rounded-2xl shadow-lg shadow-blue-500/20 transition flex items-center justify-center gap-2 cursor-pointer mt-1 disabled:opacity-75"
             >
-              <LogIn className="w-4 h-4" />
-              <span>تسجيل الدخول لحساب المشرف</span>
+              {isSyncingCloud ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-white" />
+                  <span>جاري المزامنة مع السحابة والتحقق...</span>
+                </>
+              ) : (
+                <>
+                  <LogIn className="w-4 h-4" />
+                  <span>تسجيل الدخول لحساب المشرف</span>
+                </>
+              )}
             </button>
           </form>
         )}

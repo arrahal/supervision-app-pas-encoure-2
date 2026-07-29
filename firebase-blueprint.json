@@ -1,0 +1,31 @@
+{
+  "entities": {
+    "SupervisorAccount": {
+      "title": "SupervisorAccount",
+      "description": "Information about registered supervisor accounts",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "nom": { "type": "string" },
+        "password": { "type": "string" },
+        "project": { "type": "string" },
+        "region": { "type": "string" },
+        "province": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "nom", "password"]
+    },
+    "SupervisorWorkspace": {
+      "title": "SupervisorWorkspace",
+      "description": "Workspace data associated with a supervisor account",
+      "type": "object",
+      "properties": {
+        "accountId": { "type": "string" },
+        "data": { "type": "object" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["accountId", "data"]
+    }
+  }
+}

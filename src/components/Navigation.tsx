@@ -33,8 +33,8 @@ export const Navigation: React.FC<NavigationProps> = ({ currentTab, lang, onSele
   ];
 
   return (
-    <nav className="bg-white border-t border-slate-200 shadow-xl flex-shrink-0 relative z-30">
-      <div className="flex items-center overflow-x-auto scrollbar-none touch-pan-x max-w-xl mx-auto px-2 py-1.5 gap-1.5 justify-start sm:justify-center">
+    <nav className="bg-white border-t border-slate-200 shadow-2xl flex-shrink-0 relative z-30 pb-safe">
+      <div className="flex items-center overflow-x-auto scrollbar-none touch-pan-x w-full max-w-xl mx-auto px-2 py-2 gap-1.5 justify-start sm:justify-center">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = currentTab === tab.id;
@@ -42,10 +42,10 @@ export const Navigation: React.FC<NavigationProps> = ({ currentTab, lang, onSele
             <button
               key={tab.id}
               onClick={() => onSelectTab(tab.id)}
-              className={`flex-shrink-0 px-2.5 py-1.5 rounded-xl flex flex-col items-center justify-center gap-1 transition-all duration-200 cursor-pointer min-w-[58px] ${
+              className={`flex-shrink-0 px-2.5 py-1.5 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all duration-200 cursor-pointer min-w-[62px] ${
                 isActive
-                  ? 'bg-blue-600 text-white shadow-md font-bold scale-102'
-                  : 'text-slate-500 hover:text-blue-600 hover:bg-slate-50 font-medium'
+                  ? 'bg-blue-600 text-white shadow-md font-extrabold scale-102 ring-2 ring-blue-400/30'
+                  : 'text-slate-600 hover:text-blue-600 hover:bg-slate-50 font-bold'
               }`}
             >
               <Icon className={`w-4 h-4 ${isActive ? 'stroke-[2.5]' : 'stroke-2'}`} />
