@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AppData, TabType } from './types';
 import { Language } from './utils/i18n';
 import { loadData, saveData, loadMonthSnapshot, saveMonthSnapshot } from './utils/storage';
 import { saveAccountData, getActiveAccountId } from './utils/accounts';
-import { subscribeAccountDataCloud, saveAccountDataCloud } from './utils/firebase';
+import { subscribeAccountDataCloud, saveAccountDataCloud, fetchAccountDataCloud } from './utils/firebase';
 import { Header } from './components/Header';
 import { Navigation } from './components/Navigation';
 import { MonthSplashModal } from './components/MonthSplashModal';
@@ -38,7 +38,29 @@ export default function App() {
   const [db, setDb] = useState<AppData>(() => loadData());
   const [currentTab, setCurrentTab] = useState<TabType>('home');
   const [lang, setLang] = useState<Language>('ar');
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
+    const activeId = getActiveAccountId();
+    return !!(activeId && activeId !== '');
+  });
+
+  // Initial Cloud Fetch on Mount
+  useEffect(() => {
+    if (db.supervisor?.nom) {
+      fetchAccountDataCloud(db.supervisor.nom).then((remoteData) => {
+        if (remoteData && remoteData.supervisor) {
+          setDb((currentLocal) => {
+            if (JSON.stringify(currentLocal) !== JSON.stringify(remoteData)) {
+              const activeId = getActiveAccountId();
+              localStorage.setItem(`supData_${activeId}`, JSON.stringify(remoteData));
+              saveData(remoteData);
+              return remoteData;
+            }
+            return currentLocal;
+          });
+        }
+      });
+    }
+  }, []);
 
   // Month Splash state
   const [isMonthSplashOpen, setIsMonthSplashOpen] = useState<boolean>(false);
@@ -98,9 +120,30 @@ export default function App() {
   const [gistSettingsModal, setGistSettingsModal] = useState<boolean>(false);
   const [cloudSettingsModal, setCloudSettingsModal] = useState<boolean>(false);
 
-  // Sync state changes with localStorage and supervisor account workspace in Firebase Cloud
+  // Ref to prevent echo loops when remote data arrives from Firestore
+  const isRemoteUpdateRef = useRef<boolean>(false);
+
+  // Sync state changes with localStorage and debounced supervisor account workspace in Firebase Cloud
   useEffect(() => {
-    saveAccountData(getActiveAccountId(), db);
+    // 1. Instant local persistence
+    const activeId = getActiveAccountId();
+    localStorage.setItem(`supData_${activeId}`, JSON.stringify(db));
+    saveData(db);
+
+    // 2. Skip cloud push if this change originated from a remote snapshot
+    if (isRemoteUpdateRef.current) {
+      isRemoteUpdateRef.current = false;
+      return;
+    }
+
+    // 3. Debounce cloud writes (1000ms) to avoid quota exhaustion and loop flooding
+    const timer = setTimeout(() => {
+      if (db.supervisor?.nom) {
+        saveAccountDataCloud(db.supervisor.nom, db);
+      }
+    }, 1000);
+
+    return () => clearTimeout(timer);
   }, [db]);
 
   // Real-time synchronization with Firebase Cloud across multiple devices
@@ -113,6 +156,7 @@ export default function App() {
         setDb((currentLocal) => {
           // Compare serialized strings to avoid redundant state updates
           if (JSON.stringify(currentLocal) !== JSON.stringify(remoteDb)) {
+            isRemoteUpdateRef.current = true;
             const activeId = getActiveAccountId();
             localStorage.setItem(`supData_${activeId}`, JSON.stringify(remoteDb));
             saveData(remoteDb);

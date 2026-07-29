@@ -7,6 +7,7 @@ import {
   getDocs,
   collection,
   onSnapshot,
+  disableNetwork,
 } from 'firebase/firestore';
 import { getAuth, signInAnonymously } from 'firebase/auth';
 import firebaseConfig from '../../firebase-applet-config.json';
@@ -18,16 +19,17 @@ const databaseId = firebaseConfig.firestoreDatabaseId || '(default)';
 export const db = getFirestore(app, databaseId);
 export const auth = getAuth(app);
 
-// Authenticate anonymously so security rules work seamlessly
+// Authenticate anonymously if enabled, or proceed seamlessly if disabled
 let authPromise: Promise<void> | null = null;
 export function ensureAuth(): Promise<void> {
   if (!authPromise) {
     authPromise = signInAnonymously(auth)
       .then(() => {
-        console.log('Firebase anonymous auth active');
+        // Logged in anonymously
       })
       .catch((err) => {
-        console.error('Firebase Auth failed:', err);
+        // Anonymous auth not enabled in console, proceed unauthenticated
+        console.warn('Firebase Anonymous Auth unavailable or restricted:', err?.message || err);
       });
   }
   return authPromise;
@@ -36,6 +38,17 @@ export function ensureAuth(): Promise<void> {
 // Collections
 const ACCOUNTS_COLLECTION = 'supervisorAccounts';
 const WORKSPACE_COLLECTION = 'supervisorData';
+
+// Quota circuit breaker to protect app from Firestore free tier quota errors
+let isQuotaExhausted = false;
+
+function triggerQuotaFallback() {
+  if (!isQuotaExhausted) {
+    isQuotaExhausted = true;
+    console.warn('Firestore daily write/read quota limit reached. Disabling network background sync to fall back seamlessly to local storage.');
+    disableNetwork(db).catch(() => {});
+  }
+}
 
 // Helper to normalize username key for cloud doc IDs
 export function normalizeAccountKey(username: string): string {
@@ -46,6 +59,7 @@ export function normalizeAccountKey(username: string): string {
  * Sync supervisor accounts list from Firestore
  */
 export async function fetchSupervisorAccountsCloud(): Promise<SupervisorAccount[]> {
+  if (isQuotaExhausted) return [];
   try {
     await ensureAuth();
     const querySnapshot = await getDocs(collection(db, ACCOUNTS_COLLECTION));
@@ -57,8 +71,12 @@ export async function fetchSupervisorAccountsCloud(): Promise<SupervisorAccount[
       }
     });
     return accounts;
-  } catch (error) {
-    console.error('Error fetching accounts from Firebase:', error);
+  } catch (error: any) {
+    if (error?.code === 'resource-exhausted' || error?.message?.includes('Quota limit exceeded')) {
+      triggerQuotaFallback();
+    } else {
+      console.error('Error fetching accounts from Firebase:', error);
+    }
     return [];
   }
 }
@@ -69,29 +87,48 @@ export async function fetchSupervisorAccountsCloud(): Promise<SupervisorAccount[
 export function subscribeSupervisorAccountsCloud(
   callback: (accounts: SupervisorAccount[]) => void
 ): () => void {
-  ensureAuth();
-  const unsubscribe = onSnapshot(
-    collection(db, ACCOUNTS_COLLECTION),
-    (snapshot) => {
-      const accounts: SupervisorAccount[] = [];
-      snapshot.forEach((docSnap) => {
-        if (docSnap.exists()) {
-          accounts.push(docSnap.data() as SupervisorAccount);
+  if (isQuotaExhausted) return () => {};
+  let unsubFn: (() => void) | null = null;
+  let isCancelled = false;
+
+  ensureAuth()
+    .then(() => {
+      if (isCancelled || isQuotaExhausted) return;
+      unsubFn = onSnapshot(
+        collection(db, ACCOUNTS_COLLECTION),
+        (snapshot) => {
+          const accounts: SupervisorAccount[] = [];
+          snapshot.forEach((docSnap) => {
+            if (docSnap.exists()) {
+              accounts.push(docSnap.data() as SupervisorAccount);
+            }
+          });
+          callback(accounts);
+        },
+        (error: any) => {
+          if (error?.code === 'resource-exhausted' || error?.message?.includes('Quota limit exceeded')) {
+            triggerQuotaFallback();
+          } else {
+            console.error('Realtime accounts error:', error);
+          }
         }
-      });
-      callback(accounts);
-    },
-    (error) => {
-      console.error('Realtime accounts error:', error);
-    }
-  );
-  return unsubscribe;
+      );
+    })
+    .catch((err) => {
+      console.error('Error in ensureAuth for supervisor accounts subscription:', err);
+    });
+
+  return () => {
+    isCancelled = true;
+    if (unsubFn) unsubFn();
+  };
 }
 
 /**
  * Save a supervisor account doc to Firestore
  */
 export async function saveSupervisorAccountCloud(account: SupervisorAccount): Promise<void> {
+  if (isQuotaExhausted) return;
   try {
     await ensureAuth();
     const docKey = normalizeAccountKey(account.nom);
@@ -99,8 +136,12 @@ export async function saveSupervisorAccountCloud(account: SupervisorAccount): Pr
       ...account,
       updatedAt: new Date().toISOString(),
     });
-  } catch (error) {
-    console.error('Error saving account to Firebase:', error);
+  } catch (error: any) {
+    if (error?.code === 'resource-exhausted' || error?.message?.includes('Quota limit exceeded')) {
+      triggerQuotaFallback();
+    } else {
+      console.error('Error saving account to Firebase:', error);
+    }
   }
 }
 
@@ -108,6 +149,7 @@ export async function saveSupervisorAccountCloud(account: SupervisorAccount): Pr
  * Fetch account workspace data from Firestore
  */
 export async function fetchAccountDataCloud(accountNom: string): Promise<AppData | null> {
+  if (isQuotaExhausted) return null;
   try {
     await ensureAuth();
     const docKey = normalizeAccountKey(accountNom);
@@ -119,8 +161,12 @@ export async function fetchAccountDataCloud(accountNom: string): Promise<AppData
         return payload.data as AppData;
       }
     }
-  } catch (error) {
-    console.error('Error fetching workspace data from Firebase:', error);
+  } catch (error: any) {
+    if (error?.code === 'resource-exhausted' || error?.message?.includes('Quota limit exceeded')) {
+      triggerQuotaFallback();
+    } else {
+      console.error('Error fetching workspace data from Firebase:', error);
+    }
   }
   return null;
 }
@@ -129,6 +175,7 @@ export async function fetchAccountDataCloud(accountNom: string): Promise<AppData
  * Save account workspace data to Firestore (Clean replace for accurate additions/deletions)
  */
 export async function saveAccountDataCloud(accountNom: string, data: AppData): Promise<void> {
+  if (isQuotaExhausted) return;
   try {
     await ensureAuth();
     const docKey = normalizeAccountKey(accountNom);
@@ -138,8 +185,12 @@ export async function saveAccountDataCloud(accountNom: string, data: AppData): P
       data,
       updatedAt: new Date().toISOString(),
     });
-  } catch (error) {
-    console.error('Error saving workspace data to Firebase:', error);
+  } catch (error: any) {
+    if (error?.code === 'resource-exhausted' || error?.message?.includes('Quota limit exceeded')) {
+      triggerQuotaFallback();
+    } else {
+      console.error('Error saving workspace data to Firebase:', error);
+    }
   }
 }
 
@@ -150,23 +201,41 @@ export function subscribeAccountDataCloud(
   accountNom: string,
   callback: (data: AppData) => void
 ): () => void {
-  ensureAuth();
+  if (isQuotaExhausted) return () => {};
   const docKey = normalizeAccountKey(accountNom);
   if (!docKey) return () => {};
 
-  const unsubscribe = onSnapshot(
-    doc(db, WORKSPACE_COLLECTION, docKey),
-    (docSnap) => {
-      if (docSnap.exists()) {
-        const payload = docSnap.data();
-        if (payload && payload.data) {
-          callback(payload.data as AppData);
+  let unsubFn: (() => void) | null = null;
+  let isCancelled = false;
+
+  ensureAuth()
+    .then(() => {
+      if (isCancelled || isQuotaExhausted) return;
+      unsubFn = onSnapshot(
+        doc(db, WORKSPACE_COLLECTION, docKey),
+        (docSnap) => {
+          if (docSnap.exists()) {
+            const payload = docSnap.data();
+            if (payload && payload.data) {
+              callback(payload.data as AppData);
+            }
+          }
+        },
+        (error: any) => {
+          if (error?.code === 'resource-exhausted' || error?.message?.includes('Quota limit exceeded')) {
+            triggerQuotaFallback();
+          } else {
+            console.error('Realtime account data error:', error);
+          }
         }
-      }
-    },
-    (error) => {
-      console.error('Realtime account data error:', error);
-    }
-  );
-  return unsubscribe;
+      );
+    })
+    .catch((err) => {
+      console.error('Error in ensureAuth for account data subscription:', err);
+    });
+
+  return () => {
+    isCancelled = true;
+    if (unsubFn) unsubFn();
+  };
 }
