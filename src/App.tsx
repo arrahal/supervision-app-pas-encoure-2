@@ -3,7 +3,7 @@ import { AppData, TabType } from './types';
 import { Language } from './utils/i18n';
 import { loadData, saveData, loadMonthSnapshot, saveMonthSnapshot } from './utils/storage';
 import { saveAccountData, getActiveAccountId } from './utils/accounts';
-import { subscribeAccountDataCloud, saveAccountDataCloud, fetchAccountDataCloud } from './utils/firebase';
+import { subscribeAccountDataCloud, saveAccountDataCloud, fetchAccountDataCloud, saveLazyMonthSnapshotCloud, fetchLazyMonthSnapshotCloud, getIsQuotaExhausted } from './utils/firebase';
 import { Header } from './components/Header';
 import { Navigation } from './components/Navigation';
 import { MonthSplashModal } from './components/MonthSplashModal';
@@ -132,7 +132,11 @@ export default function App() {
     localStorage.setItem(`supData_${activeId}`, currentJson);
     saveData(db);
 
-    // 2. Skip cloud push if this change originated from a remote snapshot or matches cloud exactly
+    // 2. Skip cloud push if quota is exhausted, if change originated from remote snapshot, or matches cloud exactly
+    if (getIsQuotaExhausted()) {
+      return;
+    }
+
     if (isRemoteUpdateRef.current) {
       isRemoteUpdateRef.current = false;
       return;
@@ -142,13 +146,13 @@ export default function App() {
       return;
     }
 
-    // 3. Debounce cloud writes (400ms) for fast, near-instant real-time sync across devices
+    // 3. Debounce cloud writes (1500ms) to ensure smooth real-time sync without quota depletion
     const timer = setTimeout(() => {
-      if (db.supervisor?.nom) {
+      if (db.supervisor?.nom && !getIsQuotaExhausted()) {
         lastRemoteJsonRef.current = currentJson;
         saveAccountDataCloud(db.supervisor.nom, db);
       }
-    }, 400);
+    }, 1500);
 
     return () => clearTimeout(timer);
   }, [db]);
@@ -189,11 +193,35 @@ export default function App() {
     setLang((prev) => (prev === 'ar' ? 'fr' : 'ar'));
   };
 
-  // Month change
+  // Month change with Lazy Loading support
   const handleSelectMonth = (month: number) => {
     setDb((prev) => {
-      const snapSaved = saveMonthSnapshot(prev, prev.currentMonth);
+      const currentM = prev.currentMonth;
+      const snapSaved = saveMonthSnapshot(prev, currentM);
+
+      // Lazily save current month snapshot to Firebase Cloud in background
+      if (prev.supervisor?.nom && snapSaved.monthData?.[`m${currentM}`]) {
+        saveLazyMonthSnapshotCloud(prev.supervisor.nom, currentM, snapSaved.monthData[`m${currentM}`]).catch(() => {});
+      }
+
       const loaded = loadMonthSnapshot(snapSaved, month);
+
+      // If requested month snapshot isn't available locally, fetch lazily from Firebase Cloud
+      if (prev.supervisor?.nom && !snapSaved.monthData?.[`m${month}`]) {
+        fetchLazyMonthSnapshotCloud(prev.supervisor.nom, month).then((cloudSnap) => {
+          if (cloudSnap) {
+            setDb((latest) => {
+              const updatedMonthData = {
+                ...(latest.monthData || {}),
+                [`m${month}`]: cloudSnap,
+              };
+              const reloaded = loadMonthSnapshot({ ...latest, monthData: updatedMonthData }, month);
+              return reloaded;
+            });
+          }
+        });
+      }
+
       return loaded;
     });
   };

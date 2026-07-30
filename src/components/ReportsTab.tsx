@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppData, ReportSubTab, DocumentFile } from '../types';
+import { fetchLazyDocumentsCloud, fetchLazyMonthSnapshotCloud } from '../utils/firebase';
 import { MONTHS_AR, ZONES } from '../data/initialData';
 import { Language, translations, MONTHS_FR } from '../utils/i18n';
 import { ConfirmModal } from './ConfirmModal';
@@ -60,7 +61,8 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({
   const [subTab, setSubTab] = useState<ReportSubTab>('synthese');
 
   // Documents state
-  const monthDocs = getMonthDocs(db.currentMonth);
+  const [localDocs, setLocalDocs] = useState<DocumentFile[]>(() => getMonthDocs(db.currentMonth));
+  const [isLazyLoadingDocs, setIsLazyLoadingDocs] = useState(false);
   const [docAnimId, setDocAnimId] = useState<number | ''>('');
   const [docEcoleId, setDocEcoleId] = useState<number | ''>('');
   const [docDesc, setDocDesc] = useState('');
@@ -68,6 +70,29 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [previewDoc, setPreviewDoc] = useState<DocumentFile | null>(null);
+
+  // Lazy load side documents from Firebase Cloud on demand when opening docs sub-tab or changing month
+  useEffect(() => {
+    const cached = getMonthDocs(db.currentMonth);
+    setLocalDocs(cached);
+
+    if (subTab === 'docs' && db.supervisor?.nom) {
+      setIsLazyLoadingDocs(true);
+      fetchLazyDocumentsCloud(db.supervisor.nom, db.currentMonth)
+        .then((cloudDocs) => {
+          if (cloudDocs && cloudDocs.length > 0) {
+            // Save and merge cloud documents with local ones
+            saveMonthDocs(db.currentMonth, cloudDocs);
+            setLocalDocs(cloudDocs);
+          }
+        })
+        .finally(() => {
+          setIsLazyLoadingDocs(false);
+        });
+    }
+  }, [subTab, db.currentMonth, db.supervisor?.nom]);
+
+  const monthDocs = localDocs;
 
   // Sync state
   const [isSyncing, setIsSyncing] = useState(false);
@@ -131,7 +156,9 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({
         date: new Date().toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'ar-MA'),
       };
 
-      saveMonthDocs(db.currentMonth, [...monthDocs, newDoc]);
+      const updatedDocs = [...monthDocs, newDoc];
+      saveMonthDocs(db.currentMonth, updatedDocs, db.supervisor?.nom);
+      setLocalDocs(updatedDocs);
       setSelectedFile(null);
       setDocDesc('');
       setDocAnimId('');
@@ -148,7 +175,8 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({
   const handleDeleteDoc = (idx: number) => {
     const updated = [...monthDocs];
     updated.splice(idx, 1);
-    saveMonthDocs(db.currentMonth, updated);
+    saveMonthDocs(db.currentMonth, updated, db.supervisor?.nom);
+    setLocalDocs(updated);
     onUpdateDb((prev) => ({ ...prev }));
   };
 
@@ -558,8 +586,16 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({
               </button>
             </div>
 
-            <div className={`p-2.5 rounded-xl text-xs font-bold ${cloudReady ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-amber-50 text-amber-800 border border-amber-200'}`}>
-              {cloudReady ? `✅ Cloudinary config (${cloudCfg.cloudName})` : '⚠️ Cloudinary non configuré'}
+            <div className="flex flex-wrap items-center gap-2">
+              <div className={`p-2.5 rounded-xl text-xs font-bold flex-1 ${cloudReady ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-amber-50 text-amber-800 border border-amber-200'}`}>
+                {cloudReady ? `✅ Cloudinary config (${cloudCfg.cloudName})` : '⚠️ Cloudinary non configuré'}
+              </div>
+              {isLazyLoadingDocs && (
+                <div className="bg-blue-50 text-blue-700 border border-blue-200 text-[11px] font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 animate-pulse">
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  <span>{lang === 'fr' ? 'Chargement différé Firebase...' : '⚡ تحميل كسول من Firebase...'}</span>
+                </div>
+              )}
             </div>
 
             {/* Document upload form */}

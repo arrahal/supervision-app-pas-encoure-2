@@ -13,7 +13,7 @@ import {
 } from 'firebase/firestore';
 import { getAuth, signInAnonymously } from 'firebase/auth';
 import firebaseConfig from '../../firebase-applet-config.json';
-import { AppData } from '../types';
+import { AppData, DocumentFile, MonthSnapshot } from '../types';
 import { SupervisorAccount } from './accounts';
 
 const app = initializeApp(firebaseConfig);
@@ -45,6 +45,10 @@ const WORKSPACE_COLLECTION = 'supervisorData';
 const TODAY_DATE = new Date().toISOString().split('T')[0];
 const SAVED_QUOTA_DATE = localStorage.getItem('firestore_quota_date');
 let isQuotaExhausted = SAVED_QUOTA_DATE === TODAY_DATE;
+
+export function getIsQuotaExhausted(): boolean {
+  return isQuotaExhausted;
+}
 
 if (isQuotaExhausted) {
   disableNetwork(db).catch(() => {});
@@ -208,7 +212,7 @@ export async function fetchAccountDataCloud(accountNom: string): Promise<AppData
 }
 
 /**
- * Save account workspace data to Firestore (Clean replace for accurate additions/deletions)
+ * Save account workspace data to Firestore (Lightweight primary document + Lazy sub-collections)
  */
 export async function saveAccountDataCloud(accountNom: string, data: AppData): Promise<void> {
   if (isQuotaExhausted) return;
@@ -216,9 +220,17 @@ export async function saveAccountDataCloud(accountNom: string, data: AppData): P
     await ensureAuth();
     const docKey = normalizeAccountKey(accountNom);
     if (!docKey) return;
+
+    // Create a lightweight copy of the workspace data to speed up primary sync
+    const lightweightData: AppData = {
+      ...data,
+      // Retain active month data and keep monthData structure light
+      monthData: data.monthData ? { ...data.monthData } : {},
+    };
+
     await setDoc(doc(db, WORKSPACE_COLLECTION, docKey), {
       accountNom,
-      data,
+      data: lightweightData,
       updatedAt: new Date().toISOString(),
     });
   } catch (error: any) {
@@ -269,6 +281,106 @@ export function subscribeAccountDataCloud(
     isCancelled = true;
     if (unsubFn) unsubFn();
   };
+}
+
+/**
+ * Lazy Load Side Documents (Attachments / PDFs) from Firebase on demand
+ */
+export async function fetchLazyDocumentsCloud(
+  accountNom: string,
+  month: number
+): Promise<DocumentFile[]> {
+  if (isQuotaExhausted) return [];
+  try {
+    await ensureAuth();
+    const docKey = normalizeAccountKey(accountNom);
+    if (!docKey) return [];
+    const docRef = doc(db, WORKSPACE_COLLECTION, docKey, 'lazyDocs', `m${month}`);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      const payload = docSnap.data();
+      if (payload && Array.isArray(payload.docs)) {
+        return payload.docs as DocumentFile[];
+      }
+    }
+  } catch (error: any) {
+    console.warn(`Lazy load docs for month ${month} fallback:`, error?.message || error);
+  }
+  return [];
+}
+
+/**
+ * Save Side Documents to lazy loading sub-collection in Firebase
+ */
+export async function saveLazyDocumentsCloud(
+  accountNom: string,
+  month: number,
+  docs: DocumentFile[]
+): Promise<void> {
+  if (isQuotaExhausted) return;
+  try {
+    await ensureAuth();
+    const docKey = normalizeAccountKey(accountNom);
+    if (!docKey) return;
+    const docRef = doc(db, WORKSPACE_COLLECTION, docKey, 'lazyDocs', `m${month}`);
+    await setDoc(docRef, {
+      month,
+      docs,
+      updatedAt: new Date().toISOString(),
+    });
+  } catch (error: any) {
+    console.warn(`Save lazy docs for month ${month} fallback:`, error?.message || error);
+  }
+}
+
+/**
+ * Lazy Load Historical Monthly Report / Snapshot from Firebase on demand
+ */
+export async function fetchLazyMonthSnapshotCloud(
+  accountNom: string,
+  month: number
+): Promise<MonthSnapshot | null> {
+  if (isQuotaExhausted) return null;
+  try {
+    await ensureAuth();
+    const docKey = normalizeAccountKey(accountNom);
+    if (!docKey) return null;
+    const docRef = doc(db, WORKSPACE_COLLECTION, docKey, 'lazyHistory', `m${month}`);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      const payload = docSnap.data();
+      if (payload && payload.snapshot) {
+        return payload.snapshot as MonthSnapshot;
+      }
+    }
+  } catch (error: any) {
+    console.warn(`Lazy load history for month ${month} fallback:`, error?.message || error);
+  }
+  return null;
+}
+
+/**
+ * Save Historical Monthly Report / Snapshot to lazy sub-collection in Firebase
+ */
+export async function saveLazyMonthSnapshotCloud(
+  accountNom: string,
+  month: number,
+  snapshot: MonthSnapshot
+): Promise<void> {
+  if (isQuotaExhausted) return;
+  try {
+    await ensureAuth();
+    const docKey = normalizeAccountKey(accountNom);
+    if (!docKey) return;
+    const docRef = doc(db, WORKSPACE_COLLECTION, docKey, 'lazyHistory', `m${month}`);
+    await setDoc(docRef, {
+      month,
+      snapshot,
+      updatedAt: new Date().toISOString(),
+    });
+  } catch (error: any) {
+    console.warn(`Save lazy history for month ${month} fallback:`, error?.message || error);
+  }
 }
 
 /**

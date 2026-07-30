@@ -175,9 +175,14 @@ export function getMonthDocs(month: number): DocumentFile[] {
   }
 }
 
-export function saveMonthDocs(month: number, docs: DocumentFile[]): void {
+import { saveLazyDocumentsCloud } from './firebase';
+
+export function saveMonthDocs(month: number, docs: DocumentFile[], supervisorNom?: string): void {
   try {
     localStorage.setItem(`supPedDocs_m${month}`, JSON.stringify(docs));
+    if (supervisorNom) {
+      saveLazyDocumentsCloud(supervisorNom, month, docs).catch(() => {});
+    }
   } catch (e) {
     console.error('Failed to save docs', e);
   }
