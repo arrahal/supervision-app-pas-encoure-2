@@ -700,6 +700,91 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({
       {/* SUBTAB: PARTAGE */}
       {subTab === 'partage' && (
         <div className="space-y-4">
+          {/* GitHub Cloud Sync Card */}
+          <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm space-y-3.5">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+              <div className="flex items-center gap-2">
+                <Cloud className="w-5 h-5 text-blue-600" />
+                <div>
+                  <h3 className="text-xs font-extrabold text-slate-800">
+                    {lang === 'fr' ? 'Stockage & Maintien sur GitHub (Automatique)' : 'التخزين والمزامنة التلقائية عبر GitHub'}
+                  </h3>
+                  <p className="text-[10px] text-slate-500 font-medium">
+                    {lang === 'fr' ? 'Sauvegarde directe sans fichier manuel' : 'مزامنة تلقائية بضغطة زر واحدة دون الحاجة لملفات أو رفع يدوي'}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={onOpenGistSettings}
+                className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-2.5 py-1.5 rounded-xl transition flex items-center gap-1 cursor-pointer"
+              >
+                <Settings className="w-3.5 h-3.5" />
+                <span>⚙️ {lang === 'fr' ? 'الإعدادات' : 'إعداد التوكن'}</span>
+              </button>
+            </div>
+
+            {/* Connection Status Badge */}
+            <div className={`p-3 rounded-2xl border flex items-center justify-between text-xs font-bold ${gistCfg.token ? 'bg-emerald-50 text-emerald-900 border-emerald-200' : 'bg-amber-50 text-amber-900 border-amber-200'}`}>
+              <div className="flex items-center gap-2">
+                <ShieldCheck className={`w-4 h-4 ${gistCfg.token ? 'text-emerald-600' : 'text-amber-600'}`} />
+                <div>
+                  <span className="block font-black">
+                    {gistCfg.token
+                      ? (lang === 'fr' ? `الحساب مرتبط بـ GitHub Gist` : `حساب المشرف: ${db.supervisor?.nom || 'المشرف التربوي'} (متصل بـ GitHub)`)
+                      : (lang === 'fr' ? 'GitHub non configuré' : 'لم يتم إدخال توكن GitHub بعد')}
+                  </span>
+                  {gistCfg.lastPush && (
+                    <span className="text-[10px] opacity-80 block font-normal mt-0.5">
+                      📅 {lang === 'fr' ? 'Dernière màj:' : 'آخر مزامنة:'} {new Date(gistCfg.lastPush).toLocaleString('ar-MA')}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {!gistCfg.token && (
+                <button
+                  onClick={onOpenGistSettings}
+                  className="bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold px-2.5 py-1 rounded-xl transition"
+                >
+                  ربط الآن
+                </button>
+              )}
+            </div>
+
+            {/* Instant Action Buttons */}
+            <div className="grid grid-cols-2 gap-2.5 pt-1">
+              <button
+                onClick={handleGistPush}
+                disabled={isSyncing}
+                className="bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs font-bold py-3 px-3 rounded-xl shadow transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                {isSyncing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <UploadCloud className="w-4 h-4" />}
+                <span>{lang === 'fr' ? 'Sauvegarder sur GitHub' : 'رفع البيانات تلقائياً لـ GitHub'}</span>
+              </button>
+
+              <button
+                onClick={handleGistPull}
+                disabled={isSyncing}
+                className="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold py-3 px-3 rounded-xl shadow transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                {isSyncing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                <span>{lang === 'fr' ? 'Restaurer depuis GitHub' : 'استعادة تلقائية للبيانات من GitHub'}</span>
+              </button>
+            </div>
+
+            {/* Explanatory Help Box */}
+            <div className="bg-slate-50 border border-slate-200 p-3 rounded-xl text-[11px] text-slate-600 space-y-1.5 leading-relaxed">
+              <p className="font-bold text-slate-800 flex items-center gap-1">
+                💡 <span>كيف تعمل المزامنة التلقائية؟</span>
+              </p>
+              <ul className="list-disc list-inside space-y-1 text-slate-600">
+                <li><b>دون ملفات:</b> يتم إرسال واسترجاع جميع التقارير، قائمة الأساتذة، والأفواج برمجياً بضغطة زر واحدة عبر GitHub Gist.</li>
+                <li><b>حساب خاص لكل مشرف:</b> كل جهاز يحتفظ ببيانات المشرف محلياً، ويمكن للمشرف مزامنتها مع حسابه الشخصي على GitHub.</li>
+              </ul>
+            </div>
+          </div>
+
           {/* Download Word Report */}
           <div className="bg-gradient-to-br from-blue-700 to-indigo-900 text-white rounded-2xl p-5 shadow-md text-center space-y-3">
             <Download className="w-10 h-10 mx-auto text-blue-200" />

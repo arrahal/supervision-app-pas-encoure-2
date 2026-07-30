@@ -1949,13 +1949,31 @@ export const SupervisorModal: React.FC<{
           <p className="text-[10px] text-slate-500 mt-1">تُستخدم كلمة المرور هذه للتحقق وتسجيل دخول المشرف لحسابه في هذا الجهاز.</p>
         </div>
 
-        <div className="pt-2">
+        <div className="pt-2 flex flex-col gap-2">
           <button
             type="submit"
             className="w-full bg-blue-600 hover:bg-blue-700 active:scale-98 text-white font-bold py-3 rounded-xl shadow cursor-pointer text-sm"
           >
             💾 حفظ معلومات الحساب والمشروع
           </button>
+
+          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={handleResetData}
+              className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold py-2.5 rounded-xl cursor-pointer transition text-xs"
+            >
+              🗑️ مسح جميع البيانات (بدء جديد)
+            </button>
+
+            <button
+              type="button"
+              onClick={handleLoadDemoData}
+              className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl cursor-pointer transition text-xs"
+            >
+              📥 تحميل نموذج بيانات تجريبي
+            </button>
+          </div>
         </div>
       </form>
     </Modal>

@@ -5,7 +5,6 @@ import {
   getDoc,
   setDoc,
   getDocs,
-  deleteDoc,
   collection,
   onSnapshot,
   disableNetwork,
@@ -251,34 +250,4 @@ export function subscribeAccountDataCloud(
     isCancelled = true;
     if (unsubFn) unsubFn();
   };
-}
-
-/**
- * Delete all accounts and workspace data stored in Firebase Firestore
- */
-export async function clearAllCloudData(): Promise<boolean> {
-  try {
-    await ensureAuth();
-    const accountsSnap = await getDocs(collection(db, ACCOUNTS_COLLECTION));
-    const deletePromises: Promise<void>[] = [];
-    accountsSnap.forEach((docSnap) => {
-      deletePromises.push(deleteDoc(docSnap.ref));
-    });
-
-    const dataSnap = await getDocs(collection(db, WORKSPACE_COLLECTION));
-    dataSnap.forEach((docSnap) => {
-      deletePromises.push(deleteDoc(docSnap.ref));
-    });
-
-    await Promise.all(deletePromises);
-    console.log('Successfully cleared all Firebase cloud data.');
-    return true;
-  } catch (error: any) {
-    if (error?.code === 'resource-exhausted' || error?.message?.includes('Quota limit exceeded')) {
-      triggerQuotaFallback();
-    } else {
-      console.error('Error clearing cloud data from Firebase:', error);
-    }
-    return false;
-  }
 }
