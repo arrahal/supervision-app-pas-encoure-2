@@ -464,19 +464,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({ db, lang, onLoginSuccess
           </form>
         )}
 
-        <div className="text-center pt-2.5 border-t border-slate-100 space-y-2">
+        <div className="text-center pt-2.5 border-t border-slate-100">
           <p className="text-[10px] text-slate-400 font-medium">
             🔒 تضمن المؤسسة الخصوصية التامة والحفاظ على حسابات جميع المشرفين
           </p>
-          <button
-            type="button"
-            onClick={handleWipeCloudData}
-            disabled={isSyncingCloud}
-            className="text-[11px] font-bold text-rose-600 hover:text-rose-800 hover:bg-rose-50 px-2.5 py-1 rounded-xl transition flex items-center justify-center gap-1 mx-auto border border-rose-200 cursor-pointer disabled:opacity-50"
-          >
-            <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-            <span>مسح وتفريغ جميع البيانات المحفوظة في Firebase</span>
-          </button>
         </div>
       </div>
     </div>
