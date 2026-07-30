@@ -8,6 +8,7 @@ import {
   collection,
   onSnapshot,
   disableNetwork,
+  enableNetwork,
 } from 'firebase/firestore';
 import { getAuth, signInAnonymously } from 'firebase/auth';
 import firebaseConfig from '../../firebase-applet-config.json';
@@ -46,6 +47,8 @@ let isQuotaExhausted = SAVED_QUOTA_DATE === TODAY_DATE;
 
 if (isQuotaExhausted) {
   disableNetwork(db).catch(() => {});
+} else {
+  enableNetwork(db).catch(() => {});
 }
 
 function triggerQuotaFallback() {
