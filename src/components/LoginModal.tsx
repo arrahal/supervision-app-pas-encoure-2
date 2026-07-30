@@ -218,6 +218,46 @@ export const LoginModal: React.FC<LoginModalProps> = ({ db, lang, onLoginSuccess
     }
   };
 
+  // Wipe / Reset all data (Local & Cloud) to start completely fresh
+  const handleResetAllData = async () => {
+    const confirmReset = window.confirm(
+      lang === 'fr'
+        ? 'Voulez-vous vraiment supprimer toutes les données et comptes sauvegardés pour recommencer à zéro ?'
+        : 'هل أنت تأكد من رغبتك في مسح جميع الحسابات والبيانات القديمة والبدء من جديد من الصفر؟'
+    );
+    if (!confirmReset) return;
+
+    setIsSyncingCloud(true);
+    setErrorMsg('');
+
+    try {
+      localStorage.clear();
+      await clearAllCloudData().catch(() => {});
+      setAccounts([]);
+      setUsernameInput('');
+      setPasswordInput('');
+      setNewName('');
+      setNewPassword('');
+      setNewProject('');
+      setNewRegion('');
+      setNewProvince('');
+      setIsSyncingCloud(false);
+      setMode('create');
+
+      setErrorMsg(
+        lang === 'fr'
+          ? 'Toutes les données ont été réinitialisées. Vous pouvez créer un nouveau compte.'
+          : '✅ تم تفريغ ومسح جميع البيانات والحسابات القديمة بنجاح! يمكنك الآن إنشاء حسابك الجديد.'
+      );
+    } catch (err) {
+      console.error('Error resetting all data:', err);
+      setIsSyncingCloud(false);
+      localStorage.clear();
+      setAccounts([]);
+      setMode('create');
+    }
+  };
+
   // Create Account action
   const handleCreateAccount = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -243,12 +283,24 @@ export const LoginModal: React.FC<LoginModalProps> = ({ db, lang, onLoginSuccess
       const cloudAccounts = await fetchSupervisorAccountsCloud();
       const allAccounts = cloudAccounts && cloudAccounts.length > 0 ? cloudAccounts : accounts;
       const existing = allAccounts.find((a) => a.nom.trim().toLowerCase() === trimmedName.toLowerCase());
+      
       if (existing) {
         setIsSyncingCloud(false);
+        // If password matches existing account, auto-login directly!
+        if (existing.password === trimmedPass) {
+          const localData = loadAccountData(existing);
+          setActiveAccountId(existing.id);
+          onLoginSuccess(existing, localData);
+          return;
+        }
+
+        // Set username for login mode and show actionable message
+        setUsernameInput(trimmedName);
+        setPasswordInput(trimmedPass);
         setErrorMsg(
           lang === 'fr'
-            ? 'Un compte existe déjà avec ce nom. Veuillez vous connecter.'
-            : 'يوجد حساب مسجل بالفعل بهذا الاسم! يمكنك أدخال اسمك وكلمة المرور لتسجيل الدخول.'
+            ? 'Un compte existe déjà avec ce nom. Vous pouvez vous connecter ou réinitialiser les données.'
+            : 'يوجد حساب مسجل بالفعل بهذا الاسم! يمكنك تسجيل الدخول بهذا الحساب أو مسح البيانات القديمة للبدء من جديد.'
         );
         return;
       }
@@ -325,9 +377,36 @@ export const LoginModal: React.FC<LoginModalProps> = ({ db, lang, onLoginSuccess
 
         {/* Global Error Banner */}
         {errorMsg && (
-          <div className="bg-rose-50 border border-rose-200 p-3 rounded-2xl flex items-center gap-2 text-rose-800 text-xs font-bold animate-shake">
-            <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
-            <span>{errorMsg}</span>
+          <div className="bg-rose-50 border border-rose-200 p-3 rounded-2xl space-y-2 text-rose-900 text-xs font-bold animate-shake">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
+              <span>{errorMsg}</span>
+            </div>
+
+            {errorMsg.includes('يوجد حساب مسجل بالفعل') && (
+              <div className="flex flex-col sm:flex-row gap-2 pt-1 border-t border-rose-200/60">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('login');
+                    setErrorMsg('');
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 px-3 rounded-xl text-[11px] transition cursor-pointer flex items-center justify-center gap-1"
+                >
+                  <LogIn className="w-3.5 h-3.5" />
+                  <span>تسجيل الدخول بهذا الاسم</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleResetAllData}
+                  disabled={isSyncingCloud}
+                  className="bg-rose-600 hover:bg-rose-700 text-white font-bold py-1.5 px-3 rounded-xl text-[11px] transition cursor-pointer flex items-center justify-center gap-1 disabled:opacity-50"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>مسح البيانات القديمة والبدء من جديد</span>
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -478,10 +557,19 @@ export const LoginModal: React.FC<LoginModalProps> = ({ db, lang, onLoginSuccess
           </form>
         )}
 
-        <div className="text-center pt-2.5 border-t border-slate-100">
+        <div className="text-center pt-2.5 border-t border-slate-100 space-y-2">
           <p className="text-[10px] text-slate-400 font-medium">
             🔒 تضمن المؤسسة الخصوصية التامة والحفاظ على حسابات جميع المشرفين
           </p>
+          <button
+            type="button"
+            onClick={handleResetAllData}
+            disabled={isSyncingCloud}
+            className="text-[10px] font-bold text-slate-400 hover:text-rose-600 hover:bg-rose-50 px-2 py-1 rounded-lg transition flex items-center justify-center gap-1 mx-auto cursor-pointer disabled:opacity-50"
+          >
+            <Trash2 className="w-3 h-3 text-slate-400 hover:text-rose-600" />
+            <span>تفريغ ومسح جميع البيانات والبدء من جديد (إعادة تعيين)</span>
+          </button>
         </div>
       </div>
     </div>
