@@ -55,13 +55,18 @@ if (isQuotaExhausted) {
 function isQuotaError(error: any): boolean {
   if (!error) return false;
   const code = String(error?.code || '');
-  const msg = String(error?.message || error);
+  const msg = String(error?.message || error?.stack || error);
   return (
     code === 'resource-exhausted' ||
+    code === 'unavailable' ||
+    code === 'permission-denied' ||
+    code === 'failed-precondition' ||
     msg.includes('resource-exhausted') ||
     msg.includes('Quota limit exceeded') ||
     msg.includes('Quota exceeded') ||
-    msg.includes('Free daily write units')
+    msg.includes('Free daily write units') ||
+    msg.includes('quota') ||
+    msg.includes('429')
   );
 }
 
@@ -71,7 +76,7 @@ function triggerQuotaFallback() {
     try {
       localStorage.setItem('firestore_quota_date', TODAY_DATE);
     } catch (e) {}
-    console.warn('Firestore daily write/read quota limit reached. Disabling network background sync to fall back seamlessly to local storage.');
+    console.warn('Firestore daily quota reached or unavailable. Falling back seamlessly to local storage.');
     disableNetwork(db).catch(() => {});
   }
 }
@@ -82,6 +87,12 @@ if (typeof window !== 'undefined') {
     if (isQuotaError(event.reason)) {
       triggerQuotaFallback();
       event.preventDefault(); // suppress unhandled rejection console noise
+    }
+  });
+  window.addEventListener('error', (event) => {
+    if (isQuotaError(event.error)) {
+      triggerQuotaFallback();
+      event.preventDefault();
     }
   });
 }
@@ -108,11 +119,8 @@ export async function fetchSupervisorAccountsCloud(): Promise<SupervisorAccount[
     });
     return accounts;
   } catch (error: any) {
-    if (isQuotaError(error)) {
-      triggerQuotaFallback();
-    } else {
-      console.error('Error fetching accounts from Firebase:', error);
-    }
+    triggerQuotaFallback();
+    console.warn('Firebase accounts sync fallback active:', error?.message || error);
     return [];
   }
 }
@@ -142,17 +150,14 @@ export function subscribeSupervisorAccountsCloud(
           callback(accounts);
         },
         (error: any) => {
-          if (isQuotaError(error)) {
-            triggerQuotaFallback();
-          } else {
-            console.error('Realtime accounts error:', error);
-          }
+          triggerQuotaFallback();
+          console.warn('Realtime accounts fallback active:', error?.message || error);
         }
       );
     })
     .catch((err) => {
-      if (isQuotaError(err)) triggerQuotaFallback();
-      else console.error('Error in ensureAuth for supervisor accounts subscription:', err);
+      triggerQuotaFallback();
+      console.warn('Auth for accounts subscription fallback active:', err?.message || err);
     });
 
   return () => {
@@ -174,11 +179,8 @@ export async function saveSupervisorAccountCloud(account: SupervisorAccount): Pr
       updatedAt: new Date().toISOString(),
     });
   } catch (error: any) {
-    if (isQuotaError(error)) {
-      triggerQuotaFallback();
-    } else {
-      console.error('Error saving account to Firebase:', error);
-    }
+    triggerQuotaFallback();
+    console.warn('Firebase account save fallback active:', error?.message || error);
   }
 }
 
@@ -199,11 +201,8 @@ export async function fetchAccountDataCloud(accountNom: string): Promise<AppData
       }
     }
   } catch (error: any) {
-    if (isQuotaError(error)) {
-      triggerQuotaFallback();
-    } else {
-      console.error('Error fetching workspace data from Firebase:', error);
-    }
+    triggerQuotaFallback();
+    console.warn('Firebase workspace fetch fallback active:', error?.message || error);
   }
   return null;
 }
@@ -223,11 +222,8 @@ export async function saveAccountDataCloud(accountNom: string, data: AppData): P
       updatedAt: new Date().toISOString(),
     });
   } catch (error: any) {
-    if (isQuotaError(error)) {
-      triggerQuotaFallback();
-    } else {
-      console.error('Error saving workspace data to Firebase:', error);
-    }
+    triggerQuotaFallback();
+    console.warn('Firebase workspace save fallback active:', error?.message || error);
   }
 }
 
@@ -259,17 +255,14 @@ export function subscribeAccountDataCloud(
           }
         },
         (error: any) => {
-          if (isQuotaError(error)) {
-            triggerQuotaFallback();
-          } else {
-            console.error('Realtime account data error:', error);
-          }
+          triggerQuotaFallback();
+          console.warn('Realtime account data fallback active:', error?.message || error);
         }
       );
     })
     .catch((err) => {
-      if (isQuotaError(err)) triggerQuotaFallback();
-      else console.error('Error in ensureAuth for account data subscription:', err);
+      triggerQuotaFallback();
+      console.warn('Auth for account data subscription fallback active:', err?.message || err);
     });
 
   return () => {
@@ -299,11 +292,8 @@ export async function clearAllCloudData(): Promise<boolean> {
     console.log('Successfully cleared all Firebase cloud data.');
     return true;
   } catch (error: any) {
-    if (error?.code === 'resource-exhausted' || error?.message?.includes('Quota limit exceeded')) {
-      triggerQuotaFallback();
-    } else {
-      console.error('Error clearing cloud data from Firebase:', error);
-    }
+    triggerQuotaFallback();
+    console.warn('Firebase clear cloud data fallback active:', error?.message || error);
     return false;
   }
 }
