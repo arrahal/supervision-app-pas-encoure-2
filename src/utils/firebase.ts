@@ -9,6 +9,7 @@ import {
   onSnapshot,
   disableNetwork,
   enableNetwork,
+  deleteDoc,
 } from 'firebase/firestore';
 import { getAuth, signInAnonymously } from 'firebase/auth';
 import firebaseConfig from '../../firebase-applet-config.json';
@@ -242,12 +243,61 @@ export function subscribeAccountDataCloud(
         }
       );
     })
-    .catch((err) => {
-      console.error('Error in ensureAuth for account data subscription:', err);
-    });
-
   return () => {
     isCancelled = true;
     if (unsubFn) unsubFn();
   };
 }
+
+/**
+ * Delete all saved supervisor accounts and workspace data from Firebase Cloud
+ */
+export async function clearAllFirebaseDataCloud(): Promise<void> {
+  if (isQuotaExhausted) return;
+  try {
+    await ensureAuth();
+
+    // 1. Delete all supervisor accounts docs
+    const accSnaps = await getDocs(collection(db, ACCOUNTS_COLLECTION));
+    const deleteAccPromises: Promise<void>[] = [];
+    accSnaps.forEach((docSnap) => {
+      deleteAccPromises.push(deleteDoc(doc(db, ACCOUNTS_COLLECTION, docSnap.id)));
+    });
+    await Promise.all(deleteAccPromises);
+
+    // 2. Delete all supervisor data workspace docs
+    const workSnaps = await getDocs(collection(db, WORKSPACE_COLLECTION));
+    const deleteWorkPromises: Promise<void>[] = [];
+    workSnaps.forEach((docSnap) => {
+      deleteWorkPromises.push(deleteDoc(doc(db, WORKSPACE_COLLECTION, docSnap.id)));
+    });
+    await Promise.all(deleteWorkPromises);
+
+    console.log('Successfully cleared all Firebase Cloud documents.');
+  } catch (error: any) {
+    if (error?.code === 'resource-exhausted' || error?.message?.includes('Quota limit exceeded')) {
+      triggerQuotaFallback();
+    } else {
+      console.error('Error clearing Firebase data:', error);
+    }
+  }
+}
+
+/**
+ * Purges old default data from localStorage and Firebase Cloud on first boot
+ */
+export async function purgeAllDataOnFirstRun(): Promise<void> {
+  const isPurged = localStorage.getItem('firebase_data_purged_v3');
+  if (!isPurged) {
+    try {
+      localStorage.removeItem('sup_accounts_list_v1');
+      localStorage.removeItem('active_sup_account_id');
+      localStorage.removeItem('supPed2');
+      await clearAllFirebaseDataCloud();
+      localStorage.setItem('firebase_data_purged_v3', 'true');
+    } catch (e) {
+      console.error('Failed to purge old data', e);
+    }
+  }
+}
+

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Lock, User, KeyRound, AlertCircle, Eye, EyeOff, LogIn, UserPlus, CheckCircle2, Loader2, Cloud } from 'lucide-react';
+import { Lock, User, KeyRound, AlertCircle, Eye, EyeOff, LogIn, UserPlus, CheckCircle2, Loader2, Cloud, Trash2 } from 'lucide-react';
 import { AppData } from '../types';
 import { Language } from '../utils/i18n';
 import {
@@ -15,6 +15,8 @@ import {
   fetchSupervisorAccountsCloud,
   fetchAccountDataCloud,
   subscribeSupervisorAccountsCloud,
+  clearAllFirebaseDataCloud,
+  purgeAllDataOnFirstRun,
 } from '../utils/firebase';
 
 interface LoginModalProps {
@@ -24,9 +26,11 @@ interface LoginModalProps {
 }
 
 export const LoginModal: React.FC<LoginModalProps> = ({ db, lang, onLoginSuccess }) => {
-  const [mode, setMode] = useState<'login' | 'create'>('login');
+  const [mode, setMode] = useState<'login' | 'create'>('create');
   const [accounts, setAccounts] = useState<SupervisorAccount[]>([]);
   const [isSyncingCloud, setIsSyncingCloud] = useState<boolean>(false);
+  const [isPurging, setIsPurging] = useState<boolean>(false);
+  const [successMsg, setSuccessMsg] = useState<string>('');
 
   // Login form state
   const [usernameInput, setUsernameInput] = useState<string>('');
@@ -43,15 +47,20 @@ export const LoginModal: React.FC<LoginModalProps> = ({ db, lang, onLoginSuccess
 
   // Load existing supervisor accounts on mount & subscribe to cloud accounts updates
   useEffect(() => {
-    const list = getSupervisorAccounts();
-    setAccounts(list);
-    if (list.length > 0) {
-      if (list[0].nom && list[0].nom !== 'المشرف التربوي') {
-        setUsernameInput(list[0].nom);
+    async function initAccounts() {
+      await purgeAllDataOnFirstRun();
+      const list = getSupervisorAccounts();
+      setAccounts(list);
+      if (list.length === 0) {
+        setMode('create');
+      } else {
+        setMode('login');
+        if (list[0].nom) {
+          setUsernameInput(list[0].nom);
+        }
       }
-    } else if (db.supervisor?.nom && db.supervisor.nom !== 'المشرف التربوي') {
-      setUsernameInput(db.supervisor.nom);
     }
+    initAccounts();
 
     // Subscribe to Firebase Cloud accounts realtime updates
     const unsub = subscribeSupervisorAccountsCloud((cloudAccounts) => {
@@ -219,6 +228,28 @@ export const LoginModal: React.FC<LoginModalProps> = ({ db, lang, onLoginSuccess
     onLoginSuccess(account, data);
   };
 
+  const handleClearFirebaseData = async () => {
+    if (!window.confirm('هل أنت تأكد من رغبتك في حذف جميع البيانات والحسابات المسجلة حالياً في Firebase وإعادة الضبط؟')) {
+      return;
+    }
+    setIsPurging(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+    try {
+      await clearAllFirebaseDataCloud();
+      localStorage.removeItem('sup_accounts_list_v1');
+      localStorage.removeItem('active_sup_account_id');
+      localStorage.removeItem('supPed2');
+      setAccounts([]);
+      setMode('create');
+      setSuccessMsg('تم حذف جميع البيانات القديمة من Firebase والمحفظة المحلية بنجاح!');
+    } catch (e) {
+      setErrorMsg('حدث خطأ أثناء محاولة حذف البيانات من Firebase');
+    } finally {
+      setIsPurging(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-slate-900/80 backdrop-blur-md animate-fadeIn">
       <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-sm sm:max-w-md w-full p-4 sm:p-6 space-y-3 sm:space-y-4 max-h-[92dvh] overflow-y-auto">
@@ -274,6 +305,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({ db, lang, onLoginSuccess
           <div className="bg-rose-50 border border-rose-200 p-3 rounded-2xl flex items-center gap-2 text-rose-800 text-xs font-bold animate-shake">
             <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
             <span>{errorMsg}</span>
+          </div>
+        )}
+
+        {/* Global Success Banner */}
+        {successMsg && (
+          <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-2xl flex items-center gap-2 text-emerald-800 text-xs font-bold">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+            <span>{successMsg}</span>
           </div>
         )}
 
@@ -424,10 +463,29 @@ export const LoginModal: React.FC<LoginModalProps> = ({ db, lang, onLoginSuccess
           </form>
         )}
 
-        <div className="text-center pt-2 border-t border-slate-100">
+        <div className="text-center pt-2.5 border-t border-slate-100 space-y-2">
           <p className="text-[10px] text-slate-400 font-medium">
             🔒 تضمن المؤسسة الخصوصية التامة والحفاظ على حسابات جميع المشرفين
           </p>
+
+          <button
+            type="button"
+            onClick={handleClearFirebaseData}
+            disabled={isPurging}
+            className="w-full text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 active:scale-98 transition py-2 px-3 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+          >
+            {isPurging ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>جاري مسح وحذف كافة البيانات من Firebase...</span>
+              </>
+            ) : (
+              <>
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>حذف جميع البيانات السابقة من Firebase وإعادة الضبط</span>
+              </>
+            )}
+          </button>
         </div>
       </div>
     </div>
