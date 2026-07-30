@@ -122,26 +122,33 @@ export default function App() {
 
   // Ref to prevent echo loops when remote data arrives from Firestore
   const isRemoteUpdateRef = useRef<boolean>(false);
+  const lastRemoteJsonRef = useRef<string>('');
 
   // Sync state changes with localStorage and debounced supervisor account workspace in Firebase Cloud
   useEffect(() => {
     // 1. Instant local persistence
     const activeId = getActiveAccountId();
-    localStorage.setItem(`supData_${activeId}`, JSON.stringify(db));
+    const currentJson = JSON.stringify(db);
+    localStorage.setItem(`supData_${activeId}`, currentJson);
     saveData(db);
 
-    // 2. Skip cloud push if this change originated from a remote snapshot
+    // 2. Skip cloud push if this change originated from a remote snapshot or matches cloud exactly
     if (isRemoteUpdateRef.current) {
       isRemoteUpdateRef.current = false;
       return;
     }
 
-    // 3. Debounce cloud writes (2500ms) to avoid quota exhaustion and loop flooding
+    if (lastRemoteJsonRef.current && currentJson === lastRemoteJsonRef.current) {
+      return;
+    }
+
+    // 3. Debounce cloud writes (400ms) for fast, near-instant real-time sync across devices
     const timer = setTimeout(() => {
       if (db.supervisor?.nom) {
+        lastRemoteJsonRef.current = currentJson;
         saveAccountDataCloud(db.supervisor.nom, db);
       }
-    }, 2500);
+    }, 400);
 
     return () => clearTimeout(timer);
   }, [db]);
@@ -153,12 +160,13 @@ export default function App() {
     const supervisorNom = db.supervisor.nom;
     const unsub = subscribeAccountDataCloud(supervisorNom, (remoteDb) => {
       if (remoteDb && remoteDb.supervisor) {
+        const remoteJson = JSON.stringify(remoteDb);
         setDb((currentLocal) => {
-          // Compare serialized strings to avoid redundant state updates
-          if (JSON.stringify(currentLocal) !== JSON.stringify(remoteDb)) {
+          if (JSON.stringify(currentLocal) !== remoteJson) {
             isRemoteUpdateRef.current = true;
+            lastRemoteJsonRef.current = remoteJson;
             const activeId = getActiveAccountId();
-            localStorage.setItem(`supData_${activeId}`, JSON.stringify(remoteDb));
+            localStorage.setItem(`supData_${activeId}`, remoteJson);
             saveData(remoteDb);
             return remoteDb;
           }

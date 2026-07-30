@@ -7,6 +7,7 @@ import {
   getSupervisorAccounts,
   loadAccountData,
   createSupervisorAccount,
+  createSupervisorAccountAsync,
   setActiveAccountId,
   saveSupervisorAccountsList,
   saveAccountData,
@@ -218,7 +219,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ db, lang, onLoginSuccess
   };
 
   // Create Account action
-  const handleCreateAccount = (e: React.FormEvent) => {
+  const handleCreateAccount = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
 
@@ -226,7 +227,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ db, lang, onLoginSuccess
     const trimmedPass = newPassword.trim();
 
     if (!trimmedName) {
-      setErrorMsg(lang === 'fr' ? 'Veuillez saisir le اسم المشرف' : 'يرجى إدخال اسم المشرف التربوي الجديد');
+      setErrorMsg(lang === 'fr' ? 'Veuillez saisir le nom du مشرف' : 'يرجى إدخال اسم المشرف التربوي الجديد');
       return;
     }
 
@@ -235,28 +236,41 @@ export const LoginModal: React.FC<LoginModalProps> = ({ db, lang, onLoginSuccess
       return;
     }
 
-    // Check if account name already exists
-    const existing = accounts.find((a) => a.nom.trim().toLowerCase() === trimmedName.toLowerCase());
-    if (existing) {
-      setErrorMsg(
-        lang === 'fr'
-          ? 'Un compte existe déjà avec ce nom. Veuillez vous connecter.'
-          : 'يوجد حساب مسجل بالفعل بهذا الاسم! يمكنك أدخال اسمك وكلمة المرور لتسجيل الدخول.'
+    setIsSyncingCloud(true);
+
+    try {
+      // Check if account name already exists in local list or cloud
+      const cloudAccounts = await fetchSupervisorAccountsCloud();
+      const allAccounts = cloudAccounts && cloudAccounts.length > 0 ? cloudAccounts : accounts;
+      const existing = allAccounts.find((a) => a.nom.trim().toLowerCase() === trimmedName.toLowerCase());
+      if (existing) {
+        setIsSyncingCloud(false);
+        setErrorMsg(
+          lang === 'fr'
+            ? 'Un compte existe déjà avec ce nom. Veuillez vous connecter.'
+            : 'يوجد حساب مسجل بالفعل بهذا الاسم! يمكنك أدخال اسمك وكلمة المرور لتسجيل الدخول.'
+        );
+        return;
+      }
+
+      // Create supervisor account and save to cloud asynchronously
+      const { account, data } = await createSupervisorAccountAsync(
+        trimmedName,
+        trimmedPass,
+        newProject,
+        newRegion,
+        newProvince
       );
-      return;
+
+      setIsSyncingCloud(false);
+      onLoginSuccess(account, data);
+    } catch (err) {
+      console.error('Account creation error:', err);
+      setIsSyncingCloud(false);
+      setErrorMsg(
+        lang === 'fr' ? 'Erreur lors de la création du compte.' : 'حدث خطأ أثناء إنشاء الحساب.'
+      );
     }
-
-    // Create supervisor account
-    const { account, data } = createSupervisorAccount(
-      trimmedName,
-      trimmedPass,
-      newProject,
-      newRegion,
-      newProvince
-    );
-
-    // Log in immediately as the newly created supervisor
-    onLoginSuccess(account, data);
   };
 
   return (

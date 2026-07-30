@@ -116,6 +116,47 @@ export function saveAccountData(accountId: string, data: AppData): void {
   }
 }
 
+export async function createSupervisorAccountAsync(
+  nom: string,
+  password: string,
+  project: string,
+  region: string,
+  province: string
+): Promise<{ account: SupervisorAccount; data: AppData }> {
+  const accounts = getSupervisorAccounts();
+  const newId = `sup_${Date.now()}`;
+
+  const newAcc: SupervisorAccount = {
+    id: newId,
+    nom: nom.trim(),
+    password: password.trim() || '123456',
+    project: project.trim(),
+    region: region.trim(),
+    province: province.trim(),
+    createdAt: new Date().toISOString(),
+  };
+
+  const updatedAccounts = [...accounts, newAcc];
+  saveSupervisorAccountsList(updatedAccounts);
+  setActiveAccountId(newId);
+
+  // Initialize workspace data for new supervisor account
+  const initialWorkspace: AppData = JSON.parse(JSON.stringify(INITIAL_DATA));
+  initialWorkspace.supervisor = {
+    nom: newAcc.nom,
+    password: newAcc.password,
+    project: newAcc.project,
+    region: newAcc.region,
+    province: newAcc.province,
+  };
+
+  saveAccountData(newId, initialWorkspace);
+  await saveSupervisorAccountCloud(newAcc);
+  await saveAccountDataCloud(newAcc.nom, initialWorkspace);
+
+  return { account: newAcc, data: initialWorkspace };
+}
+
 export function createSupervisorAccount(
   nom: string,
   password: string,
