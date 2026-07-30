@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Lock, User, KeyRound, AlertCircle, Eye, EyeOff, LogIn, UserPlus, CheckCircle2, Loader2, Cloud } from 'lucide-react';
+import { Lock, User, KeyRound, AlertCircle, Eye, EyeOff, LogIn, UserPlus, CheckCircle2, Loader2, Cloud, Trash2 } from 'lucide-react';
 import { AppData } from '../types';
 import { Language } from '../utils/i18n';
 import {
@@ -15,6 +15,7 @@ import {
   fetchSupervisorAccountsCloud,
   fetchAccountDataCloud,
   subscribeSupervisorAccountsCloud,
+  clearAllCloudData,
 } from '../utils/firebase';
 
 interface LoginModalProps {
@@ -171,21 +172,48 @@ export const LoginModal: React.FC<LoginModalProps> = ({ db, lang, onLoginSuccess
         }
       }
 
-      // 5. If no account exists anywhere yet, log in directly by creating supervisor account seamlessly
-      const { account, data } = createSupervisorAccount(
-        trimmedName,
-        trimmedPass,
-        '',
-        '',
-        ''
-      );
+      // 5. If no account exists anywhere yet: Require explicit account creation!
       setIsSyncingCloud(false);
-      onLoginSuccess(account, data);
+      setErrorMsg(
+        lang === 'fr'
+          ? "Aucun compte trouvé avec ce nom. Veuillez d'abord créer un nouveau compte via l'onglet '+ Nouveau compte'."
+          : "لم يتم العثور على حساب بهذا الاسم! يجب إنشاء حساب مشرف جديد أولاً من خلال التبويب '+ حساب مشرف جديد' بالأعلى."
+      );
 
     } catch (err) {
       console.error('Login error:', err);
       setIsSyncingCloud(false);
       setErrorMsg('حدث خطأ أثناء الاتصال بالسحابة. يرجى التحقق من الاتصال بالإنترنت.');
+    }
+  };
+
+  // Wipe all Firebase cloud data
+  const handleWipeCloudData = async () => {
+    const confirmDelete = window.confirm(
+      lang === 'fr'
+        ? 'Voulez-vous vraiment supprimer toutes les données et comptes sauvegardés dans Firebase ? Cette action est irréversible.'
+        : 'هل أنت تأكد من رغبتك في مسح جميع الحسابات والبيانات المحفوظة حالياً في Firebase (السحابة)؟ هذا الإجراء لا يمكن التراجع عنه.'
+    );
+    if (!confirmDelete) return;
+
+    setIsSyncingCloud(true);
+    setErrorMsg('');
+    const success = await clearAllCloudData();
+    setIsSyncingCloud(false);
+    if (success) {
+      localStorage.clear();
+      setAccounts([]);
+      setErrorMsg(
+        lang === 'fr'
+          ? 'Toutes les données Firebase ont été supprimées avec succès.'
+          : 'تم مسح جميع البيانات والحسابات المحفوظة في Firebase بنجاح! يمكنك الآن إنشاء حساب جديد.'
+      );
+    } else {
+      setErrorMsg(
+        lang === 'fr'
+          ? 'Échec de la suppression des données Firebase.'
+          : 'فشل مسح البيانات من Firebase. يرجى التحقق من الاتصال بالشبكة.'
+      );
     }
   };
 
@@ -436,10 +464,19 @@ export const LoginModal: React.FC<LoginModalProps> = ({ db, lang, onLoginSuccess
           </form>
         )}
 
-        <div className="text-center pt-2 border-t border-slate-100">
+        <div className="text-center pt-2.5 border-t border-slate-100 space-y-2">
           <p className="text-[10px] text-slate-400 font-medium">
             🔒 تضمن المؤسسة الخصوصية التامة والحفاظ على حسابات جميع المشرفين
           </p>
+          <button
+            type="button"
+            onClick={handleWipeCloudData}
+            disabled={isSyncingCloud}
+            className="text-[11px] font-bold text-rose-600 hover:text-rose-800 hover:bg-rose-50 px-2.5 py-1 rounded-xl transition flex items-center justify-center gap-1 mx-auto border border-rose-200 cursor-pointer disabled:opacity-50"
+          >
+            <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+            <span>مسح وتفريغ جميع البيانات المحفوظة في Firebase</span>
+          </button>
         </div>
       </div>
     </div>
