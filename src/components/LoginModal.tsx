@@ -113,47 +113,53 @@ export const LoginModal: React.FC<LoginModalProps> = ({ db, lang, onLoginSuccess
         }
       }
 
-      // 3. Fallback match check with current db supervisor if single account
-      if (!matchedAccount && db.supervisor) {
-        if (
-          db.supervisor.nom.trim().toLowerCase() === trimmedName.toLowerCase() &&
-          (db.supervisor.password || '123456') === trimmedPass
-        ) {
-          const defaultAccount: SupervisorAccount = {
-            id: 'sup_default',
-            nom: db.supervisor.nom,
-            password: db.supervisor.password || '123456',
-            project: db.supervisor.project || '',
-            region: db.supervisor.region || '',
-            province: db.supervisor.province || '',
+      // 3. Check direct Cloud Workspace Data for this username
+      const cloudWorkspace = await fetchAccountDataCloud(trimmedName);
+
+      if (cloudWorkspace && cloudWorkspace.supervisor) {
+        const cloudPassword = cloudWorkspace.supervisor.password || '123456';
+        if (cloudPassword === trimmedPass || (matchedAccount && matchedAccount.password === trimmedPass)) {
+          const accId = matchedAccount?.id || `sup_${Date.now()}`;
+          const accountObj: SupervisorAccount = matchedAccount || {
+            id: accId,
+            nom: cloudWorkspace.supervisor.nom || trimmedName,
+            password: trimmedPass,
+            project: cloudWorkspace.supervisor.project || '',
+            region: cloudWorkspace.supervisor.region || '',
+            province: cloudWorkspace.supervisor.province || '',
             createdAt: new Date().toISOString(),
           };
 
-          // Try fetching cloud workspace data
-          const cloudData = await fetchAccountDataCloud(defaultAccount.nom);
-          const finalData = cloudData || db;
-          saveAccountData(defaultAccount.id, finalData);
+          setActiveAccountId(accountObj.id);
+          const currentList = getSupervisorAccounts();
+          if (!currentList.some((a) => a.id === accountObj.id)) {
+            saveSupervisorAccountsList([...currentList, accountObj]);
+          }
+          saveAccountData(accountObj.id, cloudWorkspace);
 
           setIsSyncingCloud(false);
-          onLoginSuccess(defaultAccount, finalData);
+          onLoginSuccess(accountObj, cloudWorkspace);
+          return;
+        } else {
+          setIsSyncingCloud(false);
+          setErrorMsg(
+            lang === 'fr'
+              ? `Mot de passe incorrect pour ${trimmedName}.`
+              : `كلمة المرور غير صحيحة للمشرف: (${trimmedName}).`
+          );
           return;
         }
       }
 
+      // 4. If matched locally
       if (matchedAccount) {
         if (matchedAccount.password === trimmedPass) {
           setActiveAccountId(matchedAccount.id);
-
-          // Attempt to fetch latest cloud workspace data for this account
-          const cloudData = await fetchAccountDataCloud(matchedAccount.nom);
           const localData = loadAccountData(matchedAccount);
-          const accountWorkspace = cloudData || localData;
-
-          // Save combined data locally
-          saveAccountData(matchedAccount.id, accountWorkspace);
-
+          saveAccountData(matchedAccount.id, localData);
           setIsSyncingCloud(false);
-          onLoginSuccess(matchedAccount, accountWorkspace);
+          onLoginSuccess(matchedAccount, localData);
+          return;
         } else {
           setIsSyncingCloud(false);
           setErrorMsg(
@@ -161,15 +167,21 @@ export const LoginModal: React.FC<LoginModalProps> = ({ db, lang, onLoginSuccess
               ? `Mot de passe incorrect pour ${matchedAccount.nom}.`
               : `كلمة المرور غير صحيحة للمشرف: (${matchedAccount.nom}).`
           );
+          return;
         }
-      } else {
-        setIsSyncingCloud(false);
-        setErrorMsg(
-          lang === 'fr'
-            ? 'Aucun compte trouvé avec ce nom. Vous pouvez créer un nouveau compte.'
-            : 'لم يتم العثور على حساب بهذا الاسم. يمكنك إنشاء حساب مشرف جديد من خيار "+ حساب مشرف جديد" بالأعلى.'
-        );
       }
+
+      // 5. If no account exists anywhere yet, log in directly by creating supervisor account seamlessly
+      const { account, data } = createSupervisorAccount(
+        trimmedName,
+        trimmedPass,
+        '',
+        '',
+        ''
+      );
+      setIsSyncingCloud(false);
+      onLoginSuccess(account, data);
+
     } catch (err) {
       console.error('Login error:', err);
       setIsSyncingCloud(false);

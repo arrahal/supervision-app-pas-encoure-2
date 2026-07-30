@@ -64,7 +64,7 @@ export function saveSupervisorAccountsList(accounts: SupervisorAccount[]): void 
 }
 
 export function getActiveAccountId(): string {
-  return localStorage.getItem(ACTIVE_ACCOUNT_ID_KEY) || 'sup_default';
+  return localStorage.getItem(ACTIVE_ACCOUNT_ID_KEY) || '';
 }
 
 export function setActiveAccountId(id: string): void {
