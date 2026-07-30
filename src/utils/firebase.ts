@@ -5,11 +5,11 @@ import {
   getDoc,
   setDoc,
   getDocs,
+  deleteDoc,
   collection,
   onSnapshot,
   disableNetwork,
   enableNetwork,
-  deleteDoc,
 } from 'firebase/firestore';
 import { getAuth, signInAnonymously } from 'firebase/auth';
 import firebaseConfig from '../../firebase-applet-config.json';
@@ -52,6 +52,19 @@ if (isQuotaExhausted) {
   enableNetwork(db).catch(() => {});
 }
 
+function isQuotaError(error: any): boolean {
+  if (!error) return false;
+  const code = String(error?.code || '');
+  const msg = String(error?.message || error);
+  return (
+    code === 'resource-exhausted' ||
+    msg.includes('resource-exhausted') ||
+    msg.includes('Quota limit exceeded') ||
+    msg.includes('Quota exceeded') ||
+    msg.includes('Free daily write units')
+  );
+}
+
 function triggerQuotaFallback() {
   if (!isQuotaExhausted) {
     isQuotaExhausted = true;
@@ -61,6 +74,16 @@ function triggerQuotaFallback() {
     console.warn('Firestore daily write/read quota limit reached. Disabling network background sync to fall back seamlessly to local storage.');
     disableNetwork(db).catch(() => {});
   }
+}
+
+// Global listener for unhandled quota rejections from Firebase SDK
+if (typeof window !== 'undefined') {
+  window.addEventListener('unhandledrejection', (event) => {
+    if (isQuotaError(event.reason)) {
+      triggerQuotaFallback();
+      event.preventDefault(); // suppress unhandled rejection console noise
+    }
+  });
 }
 
 // Helper to normalize username key for cloud doc IDs
@@ -85,7 +108,7 @@ export async function fetchSupervisorAccountsCloud(): Promise<SupervisorAccount[
     });
     return accounts;
   } catch (error: any) {
-    if (error?.code === 'resource-exhausted' || error?.message?.includes('Quota limit exceeded')) {
+    if (isQuotaError(error)) {
       triggerQuotaFallback();
     } else {
       console.error('Error fetching accounts from Firebase:', error);
@@ -119,7 +142,7 @@ export function subscribeSupervisorAccountsCloud(
           callback(accounts);
         },
         (error: any) => {
-          if (error?.code === 'resource-exhausted' || error?.message?.includes('Quota limit exceeded')) {
+          if (isQuotaError(error)) {
             triggerQuotaFallback();
           } else {
             console.error('Realtime accounts error:', error);
@@ -128,7 +151,8 @@ export function subscribeSupervisorAccountsCloud(
       );
     })
     .catch((err) => {
-      console.error('Error in ensureAuth for supervisor accounts subscription:', err);
+      if (isQuotaError(err)) triggerQuotaFallback();
+      else console.error('Error in ensureAuth for supervisor accounts subscription:', err);
     });
 
   return () => {
@@ -150,7 +174,7 @@ export async function saveSupervisorAccountCloud(account: SupervisorAccount): Pr
       updatedAt: new Date().toISOString(),
     });
   } catch (error: any) {
-    if (error?.code === 'resource-exhausted' || error?.message?.includes('Quota limit exceeded')) {
+    if (isQuotaError(error)) {
       triggerQuotaFallback();
     } else {
       console.error('Error saving account to Firebase:', error);
@@ -175,7 +199,7 @@ export async function fetchAccountDataCloud(accountNom: string): Promise<AppData
       }
     }
   } catch (error: any) {
-    if (error?.code === 'resource-exhausted' || error?.message?.includes('Quota limit exceeded')) {
+    if (isQuotaError(error)) {
       triggerQuotaFallback();
     } else {
       console.error('Error fetching workspace data from Firebase:', error);
@@ -199,7 +223,7 @@ export async function saveAccountDataCloud(accountNom: string, data: AppData): P
       updatedAt: new Date().toISOString(),
     });
   } catch (error: any) {
-    if (error?.code === 'resource-exhausted' || error?.message?.includes('Quota limit exceeded')) {
+    if (isQuotaError(error)) {
       triggerQuotaFallback();
     } else {
       console.error('Error saving workspace data to Firebase:', error);
@@ -235,7 +259,7 @@ export function subscribeAccountDataCloud(
           }
         },
         (error: any) => {
-          if (error?.code === 'resource-exhausted' || error?.message?.includes('Quota limit exceeded')) {
+          if (isQuotaError(error)) {
             triggerQuotaFallback();
           } else {
             console.error('Realtime account data error:', error);
@@ -243,6 +267,11 @@ export function subscribeAccountDataCloud(
         }
       );
     })
+    .catch((err) => {
+      if (isQuotaError(err)) triggerQuotaFallback();
+      else console.error('Error in ensureAuth for account data subscription:', err);
+    });
+
   return () => {
     isCancelled = true;
     if (unsubFn) unsubFn();
@@ -250,54 +279,31 @@ export function subscribeAccountDataCloud(
 }
 
 /**
- * Delete all saved supervisor accounts and workspace data from Firebase Cloud
+ * Delete all accounts and workspace data stored in Firebase Firestore
  */
-export async function clearAllFirebaseDataCloud(): Promise<void> {
-  if (isQuotaExhausted) return;
+export async function clearAllCloudData(): Promise<boolean> {
   try {
     await ensureAuth();
-
-    // 1. Delete all supervisor accounts docs
-    const accSnaps = await getDocs(collection(db, ACCOUNTS_COLLECTION));
-    const deleteAccPromises: Promise<void>[] = [];
-    accSnaps.forEach((docSnap) => {
-      deleteAccPromises.push(deleteDoc(doc(db, ACCOUNTS_COLLECTION, docSnap.id)));
+    const accountsSnap = await getDocs(collection(db, ACCOUNTS_COLLECTION));
+    const deletePromises: Promise<void>[] = [];
+    accountsSnap.forEach((docSnap) => {
+      deletePromises.push(deleteDoc(docSnap.ref));
     });
-    await Promise.all(deleteAccPromises);
 
-    // 2. Delete all supervisor data workspace docs
-    const workSnaps = await getDocs(collection(db, WORKSPACE_COLLECTION));
-    const deleteWorkPromises: Promise<void>[] = [];
-    workSnaps.forEach((docSnap) => {
-      deleteWorkPromises.push(deleteDoc(doc(db, WORKSPACE_COLLECTION, docSnap.id)));
+    const dataSnap = await getDocs(collection(db, WORKSPACE_COLLECTION));
+    dataSnap.forEach((docSnap) => {
+      deletePromises.push(deleteDoc(docSnap.ref));
     });
-    await Promise.all(deleteWorkPromises);
 
-    console.log('Successfully cleared all Firebase Cloud documents.');
+    await Promise.all(deletePromises);
+    console.log('Successfully cleared all Firebase cloud data.');
+    return true;
   } catch (error: any) {
     if (error?.code === 'resource-exhausted' || error?.message?.includes('Quota limit exceeded')) {
       triggerQuotaFallback();
     } else {
-      console.error('Error clearing Firebase data:', error);
+      console.error('Error clearing cloud data from Firebase:', error);
     }
+    return false;
   }
 }
-
-/**
- * Purges old default data from localStorage and Firebase Cloud on first boot
- */
-export async function purgeAllDataOnFirstRun(): Promise<void> {
-  const isPurged = localStorage.getItem('firebase_data_purged_v3');
-  if (!isPurged) {
-    try {
-      localStorage.removeItem('sup_accounts_list_v1');
-      localStorage.removeItem('active_sup_account_id');
-      localStorage.removeItem('supPed2');
-      await clearAllFirebaseDataCloud();
-      localStorage.setItem('firebase_data_purged_v3', 'true');
-    } catch (e) {
-      console.error('Failed to purge old data', e);
-    }
-  }
-}
-

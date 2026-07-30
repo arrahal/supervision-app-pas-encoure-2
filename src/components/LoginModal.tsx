@@ -15,8 +15,7 @@ import {
   fetchSupervisorAccountsCloud,
   fetchAccountDataCloud,
   subscribeSupervisorAccountsCloud,
-  clearAllFirebaseDataCloud,
-  purgeAllDataOnFirstRun,
+  clearAllCloudData,
 } from '../utils/firebase';
 
 interface LoginModalProps {
@@ -26,11 +25,9 @@ interface LoginModalProps {
 }
 
 export const LoginModal: React.FC<LoginModalProps> = ({ db, lang, onLoginSuccess }) => {
-  const [mode, setMode] = useState<'login' | 'create'>('create');
+  const [mode, setMode] = useState<'login' | 'create'>('login');
   const [accounts, setAccounts] = useState<SupervisorAccount[]>([]);
   const [isSyncingCloud, setIsSyncingCloud] = useState<boolean>(false);
-  const [isPurging, setIsPurging] = useState<boolean>(false);
-  const [successMsg, setSuccessMsg] = useState<string>('');
 
   // Login form state
   const [usernameInput, setUsernameInput] = useState<string>('');
@@ -47,20 +44,15 @@ export const LoginModal: React.FC<LoginModalProps> = ({ db, lang, onLoginSuccess
 
   // Load existing supervisor accounts on mount & subscribe to cloud accounts updates
   useEffect(() => {
-    async function initAccounts() {
-      await purgeAllDataOnFirstRun();
-      const list = getSupervisorAccounts();
-      setAccounts(list);
-      if (list.length === 0) {
-        setMode('create');
-      } else {
-        setMode('login');
-        if (list[0].nom) {
-          setUsernameInput(list[0].nom);
-        }
+    const list = getSupervisorAccounts();
+    setAccounts(list);
+    if (list.length > 0) {
+      if (list[0].nom && list[0].nom !== 'المشرف التربوي') {
+        setUsernameInput(list[0].nom);
       }
+    } else if (db.supervisor?.nom && db.supervisor.nom !== 'المشرف التربوي') {
+      setUsernameInput(db.supervisor.nom);
     }
-    initAccounts();
 
     // Subscribe to Firebase Cloud accounts realtime updates
     const unsub = subscribeSupervisorAccountsCloud((cloudAccounts) => {
@@ -122,47 +114,53 @@ export const LoginModal: React.FC<LoginModalProps> = ({ db, lang, onLoginSuccess
         }
       }
 
-      // 3. Fallback match check with current db supervisor if single account
-      if (!matchedAccount && db.supervisor) {
-        if (
-          db.supervisor.nom.trim().toLowerCase() === trimmedName.toLowerCase() &&
-          (db.supervisor.password || '123456') === trimmedPass
-        ) {
-          const defaultAccount: SupervisorAccount = {
-            id: 'sup_default',
-            nom: db.supervisor.nom,
-            password: db.supervisor.password || '123456',
-            project: db.supervisor.project || '',
-            region: db.supervisor.region || '',
-            province: db.supervisor.province || '',
+      // 3. Check direct Cloud Workspace Data for this username
+      const cloudWorkspace = await fetchAccountDataCloud(trimmedName);
+
+      if (cloudWorkspace && cloudWorkspace.supervisor) {
+        const cloudPassword = cloudWorkspace.supervisor.password || '123456';
+        if (cloudPassword === trimmedPass || (matchedAccount && matchedAccount.password === trimmedPass)) {
+          const accId = matchedAccount?.id || `sup_${Date.now()}`;
+          const accountObj: SupervisorAccount = matchedAccount || {
+            id: accId,
+            nom: cloudWorkspace.supervisor.nom || trimmedName,
+            password: trimmedPass,
+            project: cloudWorkspace.supervisor.project || '',
+            region: cloudWorkspace.supervisor.region || '',
+            province: cloudWorkspace.supervisor.province || '',
             createdAt: new Date().toISOString(),
           };
 
-          // Try fetching cloud workspace data
-          const cloudData = await fetchAccountDataCloud(defaultAccount.nom);
-          const finalData = cloudData || db;
-          saveAccountData(defaultAccount.id, finalData);
+          setActiveAccountId(accountObj.id);
+          const currentList = getSupervisorAccounts();
+          if (!currentList.some((a) => a.id === accountObj.id)) {
+            saveSupervisorAccountsList([...currentList, accountObj]);
+          }
+          saveAccountData(accountObj.id, cloudWorkspace);
 
           setIsSyncingCloud(false);
-          onLoginSuccess(defaultAccount, finalData);
+          onLoginSuccess(accountObj, cloudWorkspace);
+          return;
+        } else {
+          setIsSyncingCloud(false);
+          setErrorMsg(
+            lang === 'fr'
+              ? `Mot de passe incorrect pour ${trimmedName}.`
+              : `كلمة المرور غير صحيحة للمشرف: (${trimmedName}).`
+          );
           return;
         }
       }
 
+      // 4. If matched locally
       if (matchedAccount) {
         if (matchedAccount.password === trimmedPass) {
           setActiveAccountId(matchedAccount.id);
-
-          // Attempt to fetch latest cloud workspace data for this account
-          const cloudData = await fetchAccountDataCloud(matchedAccount.nom);
           const localData = loadAccountData(matchedAccount);
-          const accountWorkspace = cloudData || localData;
-
-          // Save combined data locally
-          saveAccountData(matchedAccount.id, accountWorkspace);
-
+          saveAccountData(matchedAccount.id, localData);
           setIsSyncingCloud(false);
-          onLoginSuccess(matchedAccount, accountWorkspace);
+          onLoginSuccess(matchedAccount, localData);
+          return;
         } else {
           setIsSyncingCloud(false);
           setErrorMsg(
@@ -170,19 +168,52 @@ export const LoginModal: React.FC<LoginModalProps> = ({ db, lang, onLoginSuccess
               ? `Mot de passe incorrect pour ${matchedAccount.nom}.`
               : `كلمة المرور غير صحيحة للمشرف: (${matchedAccount.nom}).`
           );
+          return;
         }
-      } else {
-        setIsSyncingCloud(false);
-        setErrorMsg(
-          lang === 'fr'
-            ? 'Aucun compte trouvé avec ce nom. Vous pouvez créer un nouveau compte.'
-            : 'لم يتم العثور على حساب بهذا الاسم. يمكنك إنشاء حساب مشرف جديد من خيار "+ حساب مشرف جديد" بالأعلى.'
-        );
       }
+
+      // 5. If no account exists anywhere yet: Require explicit account creation!
+      setIsSyncingCloud(false);
+      setErrorMsg(
+        lang === 'fr'
+          ? "Aucun compte trouvé avec ce nom. Veuillez d'abord créer un nouveau compte via l'onglet '+ Nouveau compte'."
+          : "لم يتم العثور على حساب بهذا الاسم! يجب إنشاء حساب مشرف جديد أولاً من خلال التبويب '+ حساب مشرف جديد' بالأعلى."
+      );
+
     } catch (err) {
       console.error('Login error:', err);
       setIsSyncingCloud(false);
       setErrorMsg('حدث خطأ أثناء الاتصال بالسحابة. يرجى التحقق من الاتصال بالإنترنت.');
+    }
+  };
+
+  // Wipe all Firebase cloud data
+  const handleWipeCloudData = async () => {
+    const confirmDelete = window.confirm(
+      lang === 'fr'
+        ? 'Voulez-vous vraiment supprimer toutes les données et comptes sauvegardés dans Firebase ? Cette action est irréversible.'
+        : 'هل أنت تأكد من رغبتك في مسح جميع الحسابات والبيانات المحفوظة حالياً في Firebase (السحابة)؟ هذا الإجراء لا يمكن التراجع عنه.'
+    );
+    if (!confirmDelete) return;
+
+    setIsSyncingCloud(true);
+    setErrorMsg('');
+    const success = await clearAllCloudData();
+    setIsSyncingCloud(false);
+    if (success) {
+      localStorage.clear();
+      setAccounts([]);
+      setErrorMsg(
+        lang === 'fr'
+          ? 'Toutes les données Firebase ont été supprimées avec succès.'
+          : 'تم مسح جميع البيانات والحسابات المحفوظة في Firebase بنجاح! يمكنك الآن إنشاء حساب جديد.'
+      );
+    } else {
+      setErrorMsg(
+        lang === 'fr'
+          ? 'Échec de la suppression des données Firebase.'
+          : 'فشل مسح البيانات من Firebase. يرجى التحقق من الاتصال بالشبكة.'
+      );
     }
   };
 
@@ -226,28 +257,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({ db, lang, onLoginSuccess
 
     // Log in immediately as the newly created supervisor
     onLoginSuccess(account, data);
-  };
-
-  const handleClearFirebaseData = async () => {
-    if (!window.confirm('هل أنت تأكد من رغبتك في حذف جميع البيانات والحسابات المسجلة حالياً في Firebase وإعادة الضبط؟')) {
-      return;
-    }
-    setIsPurging(true);
-    setErrorMsg('');
-    setSuccessMsg('');
-    try {
-      await clearAllFirebaseDataCloud();
-      localStorage.removeItem('sup_accounts_list_v1');
-      localStorage.removeItem('active_sup_account_id');
-      localStorage.removeItem('supPed2');
-      setAccounts([]);
-      setMode('create');
-      setSuccessMsg('تم حذف جميع البيانات القديمة من Firebase والمحفظة المحلية بنجاح!');
-    } catch (e) {
-      setErrorMsg('حدث خطأ أثناء محاولة حذف البيانات من Firebase');
-    } finally {
-      setIsPurging(false);
-    }
   };
 
   return (
@@ -305,14 +314,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({ db, lang, onLoginSuccess
           <div className="bg-rose-50 border border-rose-200 p-3 rounded-2xl flex items-center gap-2 text-rose-800 text-xs font-bold animate-shake">
             <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
             <span>{errorMsg}</span>
-          </div>
-        )}
-
-        {/* Global Success Banner */}
-        {successMsg && (
-          <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-2xl flex items-center gap-2 text-emerald-800 text-xs font-bold">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-            <span>{successMsg}</span>
           </div>
         )}
 
@@ -463,29 +464,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({ db, lang, onLoginSuccess
           </form>
         )}
 
-        <div className="text-center pt-2.5 border-t border-slate-100 space-y-2">
+        <div className="text-center pt-2.5 border-t border-slate-100">
           <p className="text-[10px] text-slate-400 font-medium">
             🔒 تضمن المؤسسة الخصوصية التامة والحفاظ على حسابات جميع المشرفين
           </p>
-
-          <button
-            type="button"
-            onClick={handleClearFirebaseData}
-            disabled={isPurging}
-            className="w-full text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 active:scale-98 transition py-2 px-3 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
-          >
-            {isPurging ? (
-              <>
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                <span>جاري مسح وحذف كافة البيانات من Firebase...</span>
-              </>
-            ) : (
-              <>
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>حذف جميع البيانات السابقة من Firebase وإعادة الضبط</span>
-              </>
-            )}
-          </button>
         </div>
       </div>
     </div>

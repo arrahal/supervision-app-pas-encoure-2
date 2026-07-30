@@ -26,7 +26,7 @@ export function getSupervisorAccounts(): SupervisorAccount[] {
     const raw = localStorage.getItem(ACCOUNTS_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) {
+      if (Array.isArray(parsed) && parsed.length > 0) {
         return parsed;
       }
     }
@@ -34,7 +34,23 @@ export function getSupervisorAccounts(): SupervisorAccount[] {
     console.error('Failed to parse supervisor accounts list', e);
   }
 
-  return [];
+  // Fallback to current db supervisor or default supervisor
+  const currentDb = loadData();
+  const currentSup = currentDb.supervisor || INITIAL_SUPERVISOR;
+
+  const defaultAccount: SupervisorAccount = {
+    id: 'sup_default',
+    nom: currentSup.nom || 'المشرف التربوي',
+    password: currentSup.password || '123456',
+    project: currentSup.project || '',
+    region: currentSup.region || '',
+    province: currentSup.province || '',
+    createdAt: new Date().toISOString(),
+  };
+
+  const initialList = [defaultAccount];
+  localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(initialList));
+  return initialList;
 }
 
 export function saveSupervisorAccountsList(accounts: SupervisorAccount[]): void {
@@ -75,24 +91,17 @@ export function loadAccountData(account: SupervisorAccount): AppData {
     console.error('Failed to load data for account', account.id, e);
   }
 
-  // Initial fresh clean workspace data for new supervisor account
-  const initialWorkspace: AppData = {
-    supervisor: {
-      nom: account.nom,
-      password: account.password,
-      project: account.project,
-      region: account.region,
-      province: account.province,
-    },
-    currentMonth: new Date().getMonth() + 1,
-    animateurs: [],
-    ecoles: [],
-    groupes: [],
-    reports: [],
-    nextId: { a: 1, e: 1, g: 1, r: 1 },
-    monthData: {},
+  // If first time for this account, clone current data with updated supervisor details
+  const currentGlobal = loadData();
+  const copy: AppData = JSON.parse(JSON.stringify(currentGlobal));
+  copy.supervisor = {
+    nom: account.nom,
+    password: account.password,
+    project: account.project,
+    region: account.region,
+    province: account.province,
   };
-  return initialWorkspace;
+  return copy;
 }
 
 export function saveAccountData(accountId: string, data: AppData): void {
@@ -131,22 +140,14 @@ export function createSupervisorAccount(
   saveSupervisorAccountsList(updatedAccounts);
   setActiveAccountId(newId);
 
-  // Initialize clean workspace data for new supervisor account
-  const initialWorkspace: AppData = {
-    supervisor: {
-      nom: newAcc.nom,
-      password: newAcc.password,
-      project: newAcc.project,
-      region: newAcc.region,
-      province: newAcc.province,
-    },
-    currentMonth: new Date().getMonth() + 1,
-    animateurs: [],
-    ecoles: [],
-    groupes: [],
-    reports: [],
-    nextId: { a: 1, e: 1, g: 1, r: 1 },
-    monthData: {},
+  // Initialize workspace data for new supervisor account
+  const initialWorkspace: AppData = JSON.parse(JSON.stringify(INITIAL_DATA));
+  initialWorkspace.supervisor = {
+    nom: newAcc.nom,
+    password: newAcc.password,
+    project: newAcc.project,
+    region: newAcc.region,
+    province: newAcc.province,
   };
 
   saveAccountData(newId, initialWorkspace);

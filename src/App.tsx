@@ -136,12 +136,12 @@ export default function App() {
       return;
     }
 
-    // 3. Debounce cloud writes (1000ms) to avoid quota exhaustion and loop flooding
+    // 3. Debounce cloud writes (2500ms) to avoid quota exhaustion and loop flooding
     const timer = setTimeout(() => {
       if (db.supervisor?.nom) {
         saveAccountDataCloud(db.supervisor.nom, db);
       }
-    }, 1000);
+    }, 2500);
 
     return () => clearTimeout(timer);
   }, [db]);
